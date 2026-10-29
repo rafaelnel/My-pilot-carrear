@@ -1,0 +1,6 @@
+{
+  "name": "Apex GP: F1 Driver Career Simulator",
+  "description": "A comprehensive Formula 1 driver career management game featuring 30-second race simulations, driver attribute progression, team contracts, constructor championship, and AI-powered race commentary and news.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
