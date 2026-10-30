@@ -113,19 +113,27 @@ app.post('/api/gemini/news', async (req, res) => {
     });
   } catch (error: any) {
     const errMsg = String(error?.message || error || '');
-    const isQuotaOrRateLimit = errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('RESOURCE_EXHAUSTED');
+    const isQuotaOrRateLimit =
+      errMsg.includes('429') ||
+      errMsg.includes('quota') ||
+      errMsg.includes('RESOURCE_EXHAUSTED');
+    const isHighDemandOrTransient =
+      errMsg.includes('503') ||
+      errMsg.includes('UNAVAILABLE') ||
+      errMsg.includes('high demand') ||
+      errMsg.includes('TIMEOUT_AI_RESPONSE');
 
     if (isQuotaOrRateLimit) {
       quotaExhaustedUntil = Date.now() + 15 * 60 * 1000;
-      console.log('Gemini API quota reached. Serving procedural paddock chronicle.');
-    } else {
-      console.warn('Gemini API note:', errMsg.slice(0, 100));
+    } else if (isHighDemandOrTransient) {
+      // Back off for 2 minutes on 503 high-demand spikes and serve instant paddock editorial
+      quotaExhaustedUntil = Date.now() + 2 * 60 * 1000;
     }
 
     return res.json({
       text: generatePaddockChronicle(prompt || ''),
       source: 'paddock_editorial',
-      quotaNote: isQuotaOrRateLimit ? 'free_tier_limit' : undefined
+      quotaNote: isQuotaOrRateLimit ? 'free_tier_limit' : isHighDemandOrTransient ? 'high_demand_fallback' : undefined
     });
   }
 });

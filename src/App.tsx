@@ -73,8 +73,14 @@ export default function App() {
   const HUB_TAB_ORDER = ['garagem', 'treino', 'calendario', 'patrocinio', 'classificacao'] as const;
   type HubTab = typeof HUB_TAB_ORDER[number];
   const [activeTab, setActiveTab] = useState<HubTab>('garagem');
-  const [championshipViewMode, setChampionshipViewMode] = useState<'classificacao' | 'historico'>('classificacao');
+  const [garageViewMode, setGarageViewMode] = useState<'pista_atributos' | 'equipe_saves'>('pista_atributos');
+  const [calendarViewMode, setCalendarViewMode] = useState<'preparacao' | 'etapas'>('preparacao');
+  const [championshipViewMode, setChampionshipViewMode] = useState<'pilotos' | 'construtores' | 'historico'>('pilotos');
   const [goalsViewMode, setGoalsViewMode] = useState<'metas' | 'milestones'>('metas');
+  const [qualiViewMode, setQualiViewMode] = useState<'estrategia' | 'grid20'>('estrategia');
+  const [raceLeftTab, setRaceLeftTab] = useState<'comandos' | 'radio'>('comandos');
+  const [raceTowerCols, setRaceTowerCols] = useState<1 | 2>(2);
+  const [resultViewMode, setResultViewMode] = useState<'podio' | 'financas_metas'>('podio');
   const [tabDirection, setTabDirection] = useState<number>(1);
   const [isWidescreenMode, setIsWidescreenMode] = useState<boolean>(() => gameSettings.isWidescreenMode);
   const [selectedTrainAttr, setSelectedTrainAttr] = useState<'speed' | 'overtaking' | 'defense' | 'consistency' | 'starts'>('speed');
@@ -129,10 +135,13 @@ export default function App() {
       setGoalsViewMode('milestones');
     } else if (nextTab === 'noticias') {
       targetTab = 'garagem';
+      setGarageViewMode('pista_atributos');
     } else if (HUB_TAB_ORDER.includes(nextTab as HubTab)) {
       targetTab = nextTab as HubTab;
-      if (nextTab === 'classificacao') setChampionshipViewMode('classificacao');
+      if (nextTab === 'classificacao') setChampionshipViewMode('pilotos');
       if (nextTab === 'patrocinio') setGoalsViewMode('metas');
+      if (nextTab === 'calendario') setCalendarViewMode('preparacao');
+      if (nextTab === 'garagem') setGarageViewMode('pista_atributos');
     }
 
     if (targetTab === activeTab) return;
@@ -221,7 +230,7 @@ export default function App() {
     totalSponsorXp?: number;
   } | null>(null);
   const [seasonEndRank, setSeasonEndRank] = useState<number>(1);
-  const [isCareerPanelMinimized, setIsCareerPanelMinimized] = useState<boolean>(false);
+  const [isCareerPanelMinimized, setIsCareerPanelMinimized] = useState<boolean>(true);
   const playerGridPositionRef = useRef<number>(10);
 
   // Start-Line Animation States & Handlers
@@ -260,7 +269,7 @@ export default function App() {
           lightsTimerRef.current = setTimeout(() => {
             setStartLineStage('none');
             runLiveRaceSimulation(initialCars, track);
-          }, 1200);
+          }, 1650);
         }, randomHold);
       }
     }, 500);
@@ -414,7 +423,7 @@ export default function App() {
       : slots.findIndex(s => s === null);
 
     if (targetIdx === -1) {
-      alert("Todos os slots estão ocupados. Apague ou libere um slot para restaurar.");
+      triggerSaveToast('⚠️ Todos os slots estão ocupados. Apague ou libere um slot para restaurar.', 'autosave');
       return;
     }
 
@@ -808,7 +817,8 @@ export default function App() {
       results.sort((a, b) => a.rawTime - b.rawTime);
       setQualifyingResults(results);
       setIsQualifyingRunning(false);
-      setShowQualiSummaryModal(true);
+      setQualiViewMode('estrategia');
+      setShowQualiSummaryModal(false);
 
       if (results[0]?.isPlayer) {
         updateActiveDriver(prev => ({
@@ -816,7 +826,7 @@ export default function App() {
           careerStats: { ...prev.careerStats, poles: prev.careerStats.poles + 1 }
         }));
       }
-    }, 1400);
+    }, 1000);
   };
 
   const triggerManualPitNow = () => {
@@ -830,6 +840,8 @@ export default function App() {
   const startRaceFromQualifying = () => {
     if (!driver) return;
     setShowQualiSummaryModal(false);
+    setRaceLeftTab('comandos');
+    setResultViewMode('podio');
     setGameState('race');
     setIsRacing(true);
     setCurrentLap(0);
@@ -1706,10 +1718,10 @@ export default function App() {
 
   return (
     <div
-      className={`min-h-screen text-[#f1f1f4] font-sans selection:bg-[#e6ff55] selection:text-black flex flex-col relative ${
+      className={`h-screen max-h-screen overflow-hidden text-[#f1f1f4] font-sans selection:bg-[#e6ff55] selection:text-black flex flex-col relative ${
         isWidescreenMode
           ? 'bg-[#070709] w-full'
-          : 'bg-[#ebfa91] items-center justify-start sm:p-4 md:p-6'
+          : 'bg-[#ebfa91] items-center justify-center sm:p-2'
       }`}
     >
       {/* GLOBAL SAVE / AUTOSAVE NOTIFICATION TOAST */}
@@ -1719,16 +1731,16 @@ export default function App() {
             initial={{ opacity: 0, y: -24, scale: 0.92 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -24, scale: 0.92 }}
-            className={`fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-5 py-3 rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.8)] border flex items-center gap-3 backdrop-blur-xl ${
+            className={`fixed top-3 left-1/2 -translate-x-1/2 z-[100] px-4 py-2 rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.8)] border flex items-center gap-2.5 backdrop-blur-xl ${
               saveToast.type === 'autosave'
                 ? 'bg-[#14141c] text-[#e6ff55] border-[#e6ff55]/50'
                 : 'bg-[#e6ff55] text-black border-black font-bold'
             }`}
           >
-            <div className={`p-1.5 rounded-xl ${saveToast.type === 'autosave' ? 'bg-[#e6ff55]/20 text-[#e6ff55]' : 'bg-black text-[#e6ff55]'}`}>
-              <CheckCircle2 className="w-5 h-5" />
+            <div className={`p-1 rounded-xl ${saveToast.type === 'autosave' ? 'bg-[#e6ff55]/20 text-[#e6ff55]' : 'bg-black text-[#e6ff55]'}`}>
+              <CheckCircle2 className="w-4 h-4" />
             </div>
-            <span className="text-xs sm:text-sm font-display font-black italic uppercase tracking-wide">
+            <span className="text-xs font-display font-black italic uppercase tracking-wide">
               {saveToast.message}
             </span>
           </motion.div>
@@ -1736,13 +1748,13 @@ export default function App() {
       </AnimatePresence>
       {/* Top Floating View Toggle when in Compact Mobile Frame Mode */}
       {!isWidescreenMode && (
-        <div className="hidden sm:flex items-center justify-between w-full max-w-[430px] mb-2 px-2 text-xs font-mono">
-          <span className="text-[#070709] font-black italic tracking-wide uppercase font-display text-sm">
+        <div className="hidden sm:flex items-center justify-between w-full max-w-[430px] mb-1 px-2 text-xs font-mono shrink-0">
+          <span className="text-[#070709] font-black italic tracking-wide uppercase font-display text-xs">
             APEX GP // MOBILE FRAME
           </span>
           <button
             onClick={() => setIsWidescreenMode(true)}
-            className="px-3 py-1 bg-[#070709] text-[#e6ff55] rounded-full text-[11px] font-bold tracking-tight hover:brightness-125 transition-all cursor-pointer shadow"
+            className="px-2.5 py-0.5 bg-[#070709] text-[#e6ff55] rounded-full text-[10px] font-bold tracking-tight hover:brightness-125 transition-all cursor-pointer shadow"
           >
             🖥️ Alternar p/ Versão Desktop
           </button>
@@ -1751,20 +1763,20 @@ export default function App() {
 
       {/* Main Application Shell: Full-Viewport Desktop Workspace vs Smartphone Frame */}
       <div 
-        className={`w-full flex flex-col relative overflow-hidden transition-all duration-300 ${
+        className={`w-full flex-1 min-h-0 flex flex-col relative overflow-hidden transition-all duration-300 ${
           isWidescreenMode
-            ? 'min-h-screen bg-[#070709]'
-            : 'sm:max-w-[420px] min-h-screen sm:min-h-[890px] bg-[#070709] sm:rounded-[48px] sm:border-[8px] sm:border-[#181822] sm:shadow-[0_25px_80px_rgba(0,0,0,0.6)] pb-20'
+            ? 'h-full bg-[#070709]'
+            : 'sm:max-w-[420px] h-full sm:max-h-[94vh] bg-[#070709] sm:rounded-[36px] sm:border-[6px] sm:border-[#181822] sm:shadow-[0_25px_80px_rgba(0,0,0,0.6)] pb-14'
         }`}
       >
         {/* iOS Status Bar ONLY when in Mobile Frame Mode */}
         {!isWidescreenMode && (
-          <div className="flex items-center justify-between px-6 pt-3 pb-1 text-white text-xs select-none z-30 shrink-0">
-            <span className="font-semibold tracking-tight text-xs font-mono">9:41</span>
-            <div className="w-24 h-4 bg-[#14141c] rounded-full mx-auto hidden sm:block border border-white/5 shadow-inner"></div>
+          <div className="flex items-center justify-between px-5 pt-2 pb-1 text-white text-xs select-none z-30 shrink-0">
+            <span className="font-semibold tracking-tight text-[11px] font-mono">9:41</span>
+            <div className="w-20 h-3.5 bg-[#14141c] rounded-full mx-auto hidden sm:block border border-white/5 shadow-inner"></div>
             <div className="flex items-center gap-1.5 opacity-90 font-mono text-[10px]">
               <span className="font-bold">5G</span>
-              <div className="w-5 h-2.5 border border-white/60 rounded-sm p-0.5 flex items-center">
+              <div className="w-4 h-2 border border-white/60 rounded-sm p-0.5 flex items-center">
                 <div className="w-full h-full bg-[#e6ff55] rounded-2xs"></div>
               </div>
             </div>
@@ -1773,76 +1785,42 @@ export default function App() {
 
         {/* TITLE SCREEN / SAVE SLOTS SELECTOR (DESKTOP WIDESCREEN & MOBILE RESPONSIVE) */}
         {gameState === 'title' && !isCreatingDriver && (
-          <div className="flex-1 flex flex-col justify-between p-5 sm:p-8 lg:p-12 max-w-[1440px] w-full mx-auto overflow-y-auto">
-            <div className="space-y-6 lg:space-y-8">
+          <div className="flex-1 min-h-0 flex flex-col justify-between p-2.5 sm:p-4 lg:px-7 lg:py-3.5 max-w-[1440px] w-full mx-auto overflow-hidden gap-2">
+            <div className="flex-1 min-h-0 flex flex-col gap-2 sm:gap-3 overflow-hidden">
               {/* Top Brand Navbar */}
-              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/5 pb-5">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-[#e6ff55] text-black flex items-center justify-center shadow-lg shadow-[#e6ff55]/20 shrink-0">
-                    <Trophy className="w-6 h-6" />
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-2 shrink-0 relative z-20">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#e6ff55] text-black flex items-center justify-center shadow-lg shadow-[#e6ff55]/20 shrink-0">
+                    <Trophy className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-[#e6ff55]/15 text-[#e6ff55] border border-[#e6ff55]/30 font-bold">
-                        DESKTOP EDITION // 2026
-                      </span>
-                      <span className="text-xs font-mono text-[#8e8e9c] hidden sm:inline">
-                        4 Categorias · Teto FIA 90 OVR
-                      </span>
-                    </div>
-                    <h1 className="text-3xl sm:text-5xl font-display font-black italic text-white tracking-tight uppercase leading-none mt-1">
+                    <h1 className="text-lg sm:text-2xl font-display font-black italic text-white tracking-tight uppercase leading-none">
                       APEX GP <span className="text-[#e6ff55]">// CAREER HUB</span>
                     </h1>
+                    <p className="text-[10px] text-[#8e8e9c] font-mono hidden sm:block mt-0.5">
+                      Selecione um slot abaixo para continuar sua carreira ou criar um novo piloto
+                    </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <button
+                    type="button"
                     onClick={() => setIsSettingsOpen(true)}
-                    className="px-4 py-2 bg-[#14141c] hover:bg-[#1e1e2a] text-[#e6ff55] border border-white/10 rounded-full text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-2 shadow-sm"
+                    className="min-h-[38px] px-3 py-1.5 bg-[#14141c] hover:bg-[#1e1e2a] text-[#e6ff55] border border-white/10 rounded-xl text-[11px] font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm relative z-20"
                     title="Abrir Configurações do Jogo"
                   >
-                    <Settings className="w-4 h-4 text-[#e6ff55]" />
+                    <Settings className="w-3.5 h-3.5 text-[#e6ff55]" />
                     <span>CONFIGURAÇÕES</span>
                   </button>
 
                   <button
+                    type="button"
                     onClick={() => setIsWidescreenMode(prev => !prev)}
-                    className="px-4 py-2 bg-[#14141c] hover:bg-[#1e1e2a] text-[#e6ff55] border border-white/10 rounded-full text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-2"
+                    className="min-h-[38px] px-3 py-1.5 bg-[#14141c] hover:bg-[#1e1e2a] text-[#e6ff55] border border-white/10 rounded-xl text-[11px] font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 relative z-20"
                   >
-                    <span>{isWidescreenMode ? '📱 Modo Compacto Mobile' : '🖥️ Modo Desktop Fullscreen'}</span>
+                    <span>{isWidescreenMode ? '📱 Modo Mobile' : '🖥️ Modo Desktop'}</span>
                   </button>
-                </div>
-              </div>
-
-              {/* 3 Feature Highlight Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-[#14141c] p-4 rounded-3xl border border-white/5 flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-[#38bdf8] text-slate-950 flex items-center justify-center shrink-0 shadow-md">
-                    <Zap className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <div className="text-base font-display font-black italic uppercase text-white">4 Categorias Oficiais</div>
-                    <div className="text-xs text-[#8e8e9c]">Suba do Kart, F3 e F2 até o topo da Fórmula 1</div>
-                  </div>
-                </div>
-                <div className="bg-[#14141c] p-4 rounded-3xl border border-white/5 flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-[#ff5f8f] text-slate-950 flex items-center justify-center shrink-0 shadow-md">
-                    <Shield className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <div className="text-base font-display font-black italic uppercase text-white">Teto FIA Média 90</div>
-                    <div className="text-xs text-[#8e8e9c]">Especialize atributos do piloto + bônus de equipe</div>
-                  </div>
-                </div>
-                <div className="bg-[#14141c] p-4 rounded-3xl border border-white/5 flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-[#e6ff55] text-slate-950 flex items-center justify-center shrink-0 shadow-md">
-                    <Flame className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <div className="text-base font-display font-black italic uppercase text-white">Pit Wall & Telemetria</div>
-                    <div className="text-xs text-[#8e8e9c]">Clima dinâmico, desgaste de pneus e metas anuais</div>
-                  </div>
                 </div>
               </div>
 
@@ -1851,124 +1829,152 @@ export default function App() {
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-[#14141c] border border-[#e6ff55]/40 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl w-full"
+                  className="bg-[#14141c] border border-[#e6ff55]/40 rounded-2xl p-2 px-3 flex flex-col sm:flex-row items-center justify-between gap-2 shadow-xl w-full shrink-0 relative z-20"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-[#e6ff55]/20 text-[#e6ff55]">
-                      <RotateCcw className="w-5 h-5" />
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="p-1.5 rounded-xl bg-[#e6ff55]/20 text-[#e6ff55] shrink-0">
+                      <RotateCcw className="w-4 h-4" />
                     </div>
-                    <div>
-                      <div className="text-[10px] font-mono font-bold text-[#e6ff55] uppercase tracking-wider">
+                    <div className="min-w-0">
+                      <div className="text-[9px] font-mono font-bold text-[#e6ff55] uppercase tracking-wider">
                         ÚLTIMO PILOTO EXCLUÍDO
                       </div>
-                      <div className="text-sm font-display font-black italic uppercase text-white">
+                      <div className="text-xs font-display font-black italic uppercase text-white truncate">
                         {lastDeletedDriverSlot.driver.name} ({lastDeletedDriverSlot.driver.category.toUpperCase()} · {lastDeletedDriverSlot.driver.careerStats?.wins || 0} Vitórias)
                       </div>
                     </div>
                   </div>
 
                   <button
+                    type="button"
                     onClick={handleRestoreLastDeletedDriver}
-                    className="px-4 py-2.5 bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase text-xs rounded-xl transition-all shadow-md cursor-pointer flex items-center gap-1.5 shrink-0"
+                    className="min-h-[40px] px-3.5 py-1.5 bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase text-xs rounded-xl transition-all shadow-md cursor-pointer flex items-center gap-1.5 shrink-0 relative z-30"
                   >
-                    <RotateCcw className="w-4 h-4" />
+                    <RotateCcw className="w-3.5 h-3.5" />
                     <span>DESFAZER & RECUPERAR PILOTO</span>
                   </button>
                 </motion.div>
               )}
 
               {/* Section Header */}
-              <div className="flex items-center justify-between pt-2">
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-display font-black italic uppercase text-[#e6ff55]">
-                    SELECIONE SEU PILOTO // 4 SLOTS DE CARREIRA
-                  </h2>
-                  <p className="text-xs text-[#8e8e9c] font-mono">
-                    Progresso salvo automaticamente no navegador. Escolha um slot para continuar ou iniciar uma nova jornada.
-                  </p>
-                </div>
+              <div className="flex items-center justify-between shrink-0">
+                <h2 className="text-sm sm:text-base font-display font-black italic uppercase text-[#e6ff55] leading-tight">
+                  SELECIONE SEU PILOTO // 4 SLOTS DE CARREIRA
+                </h2>
+                <span className="text-[10px] font-mono text-[#8e8e9c] hidden md:inline">
+                  Toque em qualquer card ou botão para iniciar imediatamente
+                </span>
               </div>
 
-              {/* 4 Slots Grid: 4 Columns on Desktop Widescreen, 1 Column in Mobile Frame */}
-              <div className={`grid gap-5 ${isWidescreenMode ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4' : 'grid-cols-1'}`}>
+              {/* 4 Slots Grid: Adaptive height so buttons are ALWAYS huge and never clipped */}
+              <div className={`flex-1 min-h-0 grid gap-2.5 sm:gap-3 ${isWidescreenMode ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-2'}`}>
                 {slots.map((slot, index) => {
                   const slotTeam = slot ? (TEAMS.find(t => t.id === slot.teamId) || TEAMS[0]) : null;
                   const slotAvg = slot ? calculateDriverAvg(slot.attributes) : 0;
                   return (
                     <motion.div 
                       key={index}
-                      initial={{ opacity: 0, y: 15 }}
+                      initial={{ opacity: 0, y: 12 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.06 }}
-                      className="relative overflow-hidden bg-[#14141c] border border-white/10 hover:border-[#e6ff55]/50 rounded-3xl p-5 flex flex-col justify-between shadow-xl transition-all group"
+                      transition={{ delay: index * 0.04 }}
+                      onClick={() => {
+                        if (slot) {
+                          selectDriverSlot(index);
+                        } else {
+                          setCreatingSlotId(index);
+                          setIsCreatingDriver(true);
+                        }
+                      }}
+                      className="relative bg-[#14141c] border-2 border-white/10 hover:border-[#e6ff55] rounded-2xl p-2.5 sm:p-3.5 flex flex-col justify-between shadow-xl transition-all group min-h-0 cursor-pointer select-none overflow-hidden"
                     >
                       {slot && slotTeam ? (
                         <>
-                          <div className="relative z-10 space-y-4">
-                            <div className="flex items-center justify-between border-b border-white/5 pb-3">
-                              <span className="text-xs font-mono font-bold text-[#e6ff55] uppercase">SLOT 0{index + 1}</span>
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/5 text-white border border-white/10">
+                          {/* Top & Middle Content: Flex-1 min-h-0 so it adapts without ever pushing the button off-card */}
+                          <div className="relative z-10 flex-1 min-h-0 flex flex-col justify-between gap-1.5 overflow-hidden">
+                            {/* Slot Header */}
+                            <div className="flex items-center justify-between border-b border-white/5 pb-1 shrink-0">
+                              <span className="text-[10px] sm:text-[11px] font-mono font-bold text-[#e6ff55] uppercase">
+                                SLOT 0{index + 1}
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full bg-white/5 text-white border border-white/10">
                                   OVR {slotAvg}
                                 </span>
-                                <span className="text-[10px] font-display font-black italic px-2.5 py-0.5 rounded-full bg-[#ff5f8f]/20 text-[#ff5f8f] border border-[#ff5f8f]/30 uppercase">
+                                <span className="text-[9px] font-display font-black italic px-2 py-0.5 rounded-full bg-[#ff5f8f]/20 text-[#ff5f8f] border border-[#ff5f8f]/30 uppercase">
                                   {slot.category.toUpperCase()}
                                 </span>
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-3.5">
+                            {/* Driver Identity */}
+                            <div className="flex items-center gap-2 shrink-0">
                               <HelmetVector 
                                 primaryColor={slot.helmetColor} 
                                 secondaryColor={slot.helmetSecondaryColor || '#1e3a8a'} 
-                                className="w-16 h-16 shrink-0 drop-shadow-lg" 
+                                className="w-9 h-9 sm:w-11 sm:h-11 shrink-0 drop-shadow-lg" 
                               />
-                              <div className="min-w-0">
-                                <div className="text-lg font-display font-black italic uppercase text-white truncate">{slot.name}</div>
-                                <div className="text-xs text-[#8e8e9c] font-mono">{slot.nationality}</div>
-                                <div className="text-xs font-bold mt-1 truncate" style={{ color: slotTeam.color }}>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-xs sm:text-base font-display font-black italic uppercase text-white truncate leading-tight">
+                                  {slot.name}
+                                </div>
+                                <div className="text-[9px] sm:text-[10px] text-[#8e8e9c] font-mono truncate">
+                                  {slot.nationality}
+                                </div>
+                                <div className="text-[10px] sm:text-[11px] font-bold truncate" style={{ color: slotTeam.color }}>
                                   {slotTeam.name}
                                 </div>
                               </div>
                             </div>
 
-                            {/* Car Preview inside Desktop Card */}
-                            <div className="bg-[#070709] rounded-2xl p-2.5 border border-white/5 flex items-center justify-center">
-                              <CategoryCarVector 
-                                category={slot.category} 
-                                teamColor={slotTeam.color} 
-                                helmetColor={slot.helmetColor} 
-                                className="w-full h-14" 
-                              />
-                            </div>
+                            {/* Car Preview inside Card (Only shown on lg+ 4-col widescreen where cards are tall) */}
+                            {isWidescreenMode && (
+                              <div className="hidden lg:flex flex-1 min-h-[38px] max-h-[68px] bg-[#070709] rounded-xl px-2 py-1 border border-white/5 items-center justify-center overflow-hidden">
+                                <CategoryCarVector 
+                                  category={slot.category} 
+                                  teamColor={slotTeam.color} 
+                                  helmetColor={slot.helmetColor} 
+                                  className="w-full h-full max-h-12 object-contain" 
+                                />
+                              </div>
+                            )}
 
                             {/* Mini Career Stats */}
-                            <div className="grid grid-cols-3 gap-2 text-center font-mono bg-[#070709]/70 p-2.5 rounded-2xl border border-white/5">
+                            <div className="grid grid-cols-3 gap-1 text-center font-mono bg-[#070709]/80 p-1.5 rounded-xl border border-white/5 shrink-0">
                               <div>
-                                <div className="text-[9px] text-[#8e8e9c] uppercase">Títulos</div>
-                                <div className="text-xs font-bold text-[#e6ff55]">{slot.careerStats.championships}</div>
+                                <div className="text-[8px] text-[#8e8e9c] uppercase">Títulos</div>
+                                <div className="text-[10px] sm:text-xs font-bold text-[#e6ff55]">{slot.careerStats.championships}</div>
                               </div>
                               <div>
-                                <div className="text-[9px] text-[#8e8e9c] uppercase">Vitórias</div>
-                                <div className="text-xs font-bold text-white">{slot.careerStats.wins}</div>
+                                <div className="text-[8px] text-[#8e8e9c] uppercase">Vitórias</div>
+                                <div className="text-[10px] sm:text-xs font-bold text-white">{slot.careerStats.wins}</div>
                               </div>
                               <div>
-                                <div className="text-[9px] text-[#8e8e9c] uppercase">Saldo</div>
-                                <div className="text-xs font-bold text-[#38bdf8]">${slot.money.toFixed(1)}M</div>
+                                <div className="text-[8px] text-[#8e8e9c] uppercase">Saldo</div>
+                                <div className="text-[10px] sm:text-xs font-bold text-[#38bdf8]">${slot.money.toFixed(1)}M</div>
                               </div>
                             </div>
                           </div>
 
-                          <div className="flex gap-2 pt-4 mt-2">
+                          {/* LARGE UNOBSTRUCTED ACTION BUTTONS */}
+                          <div className="flex items-center gap-2 pt-2 mt-1.5 border-t border-white/5 shrink-0 relative z-30 pointer-events-auto">
                             <button
-                              onClick={() => selectDriverSlot(index)}
-                              className="flex-1 bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase py-3.5 rounded-full text-sm tracking-wider transition-all cursor-pointer shadow-lg shadow-[#e6ff55]/15"
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                selectDriverSlot(index);
+                              }}
+                              className="flex-1 min-h-[44px] sm:min-h-[48px] bg-[#e6ff55] hover:brightness-110 active:scale-[0.98] text-black font-display font-black italic uppercase py-2.5 px-3 rounded-xl text-xs sm:text-sm tracking-wider transition-all cursor-pointer shadow-lg shadow-[#e6ff55]/20 flex items-center justify-center gap-1.5"
                             >
-                              CONTINUAR CARREIRA
+                              <Play className="w-3.5 h-3.5 fill-current shrink-0" />
+                              <span className="truncate">JOGAR</span>
                             </button>
                             <button
-                              onClick={() => handleDeleteSlot(index)}
-                              className="p-3.5 bg-[#1e1e28] hover:bg-red-950 hover:text-red-400 text-slate-400 rounded-full transition-colors cursor-pointer"
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteSlot(index);
+                              }}
+                              className="min-h-[44px] sm:min-h-[48px] min-w-[44px] sm:min-w-[48px] bg-[#1e1e28] hover:bg-red-600 hover:text-white active:scale-[0.98] text-slate-300 rounded-xl transition-all cursor-pointer shrink-0 flex items-center justify-center border border-white/10"
                               title="Excluir Carreira"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -1976,23 +1982,41 @@ export default function App() {
                           </div>
                         </>
                       ) : (
-                        <div className="flex-1 flex flex-col items-center justify-center text-center py-10 space-y-4">
-                          <div className="w-16 h-16 rounded-full bg-[#191924] border border-dashed border-white/15 flex items-center justify-center text-[#8e8e9c] group-hover:border-[#e6ff55]/50 group-hover:text-[#e6ff55] transition-colors">
-                            <PlusCircle className="w-7 h-7" />
+                        <div className="flex-1 min-h-0 flex flex-col justify-between text-center gap-2 relative z-10">
+                          <div className="flex items-center justify-between border-b border-white/5 pb-1 shrink-0">
+                            <span className="text-[10px] sm:text-[11px] font-mono font-bold text-[#8e8e9c] uppercase">
+                              SLOT 0{index + 1}
+                            </span>
+                            <span className="text-[9px] font-mono uppercase px-2 py-0.5 rounded-full bg-white/5 text-[#8e8e9c]">
+                              LIVRE
+                            </span>
                           </div>
-                          <div>
-                            <div className="text-sm font-display font-black italic uppercase text-white">SLOT 0{index + 1} DISPONÍVEL</div>
-                            <div className="text-xs font-mono text-[#8e8e9c] mt-0.5">Inicie uma nova carreira no Kart</div>
+
+                          <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-1.5 py-1">
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-[#191924] border border-dashed border-white/20 flex items-center justify-center text-[#e6ff55] group-hover:border-[#e6ff55] group-hover:scale-105 transition-all shrink-0">
+                              <PlusCircle className="w-5 h-5 sm:w-6 sm:h-6" />
+                            </div>
+                            <div>
+                              <div className="text-xs sm:text-sm font-display font-black italic uppercase text-white">
+                                SLOT 0{index + 1} DISPONÍVEL
+                              </div>
+                              <div className="text-[10px] font-mono text-[#8e8e9c] hidden sm:block">
+                                Inicie uma nova carreira no Kart
+                              </div>
+                            </div>
                           </div>
+
                           <button
-                            onClick={() => {
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setCreatingSlotId(index);
                               setIsCreatingDriver(true);
                             }}
-                            className="w-full bg-[#1e1e28] hover:bg-[#e6ff55] hover:text-black text-[#e6ff55] font-display font-black italic uppercase py-3.5 rounded-full text-xs tracking-wider transition-all cursor-pointer inline-flex items-center justify-center gap-2 border border-white/10"
+                            className="w-full min-h-[44px] sm:min-h-[48px] bg-[#1e1e28] group-hover:bg-[#e6ff55] group-hover:text-black hover:brightness-110 active:scale-[0.98] text-[#e6ff55] font-display font-black italic uppercase py-2.5 px-3 rounded-xl text-xs sm:text-sm tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-[#e6ff55]/30 shrink-0 relative z-30 pointer-events-auto shadow-md"
                           >
-                            <PlusCircle className="w-4 h-4" />
-                            <span>CRIAR NOVO PILOTO</span>
+                            <PlusCircle className="w-4 h-4 shrink-0" />
+                            <span className="truncate">CRIAR PILOTO</span>
                           </button>
                         </div>
                       )}
@@ -2002,7 +2026,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="text-center pt-8 text-xs text-[#8e8e9c] font-mono">
+            <div className="text-center pt-1 text-[10px] text-[#8e8e9c] font-mono shrink-0">
               APEX GP MOTORSPORT · TEMPORADA OFICIAL 2026 · DESKTOP & MOBILE EDITION
             </div>
           </div>
@@ -2010,21 +2034,21 @@ export default function App() {
 
       {/* STEP 2: DRIVER DELETION CONFIRMATION MODAL */}
       {deletingSlotIndex !== null && slots[deletingSlotIndex] && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md overflow-y-auto">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 bg-black/90 backdrop-blur-md overflow-hidden">
           <motion.div
             initial={{ scale: 0.92, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="max-w-md w-full bg-[#14141c] border border-red-500/40 rounded-3xl p-6 shadow-2xl space-y-5 text-white my-auto relative overflow-hidden"
+            className="max-w-md w-full max-h-[95vh] bg-[#14141c] border border-red-500/40 rounded-3xl p-5 shadow-2xl space-y-3.5 text-white my-auto relative overflow-hidden"
           >
-            <div className="flex items-center gap-3 border-b border-white/10 pb-3">
-              <div className="p-2.5 rounded-2xl bg-red-500/20 text-red-400 border border-red-500/30">
-                <AlertTriangle className="w-6 h-6" />
+            <div className="flex items-center gap-3 border-b border-white/10 pb-2.5">
+              <div className="p-2 rounded-2xl bg-red-500/20 text-red-400 border border-red-500/30">
+                <AlertTriangle className="w-5 h-5" />
               </div>
               <div>
-                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-red-400">
+                <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-red-400">
                   PASSO 2 DE 2 // CONFIRMAÇÃO
                 </span>
-                <h3 className="text-xl font-display font-black italic uppercase text-white">
+                <h3 className="text-lg font-display font-black italic uppercase text-white leading-tight">
                   EXCLUIR PILOTO?
                 </h3>
               </div>
@@ -2038,7 +2062,7 @@ export default function App() {
               .
             </p>
 
-            <div className="bg-[#070709] border border-white/10 rounded-2xl p-3.5 space-y-2 font-mono text-xs">
+            <div className="bg-[#070709] border border-white/10 rounded-2xl p-3 space-y-1.5 font-mono text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-[#8e8e9c]">Categoria:</span>
                 <span className="text-white font-bold uppercase">{slots[deletingSlotIndex]?.category}</span>
@@ -2051,26 +2075,26 @@ export default function App() {
               </div>
             </div>
 
-            <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-2xl text-[11px] font-mono text-amber-200 leading-snug flex items-center gap-2">
+            <div className="bg-amber-500/10 border border-amber-500/30 p-2.5 rounded-2xl text-[10px] font-mono text-amber-200 leading-snug flex items-center gap-2">
               <RotateCcw className="w-4 h-4 text-amber-400 shrink-0" />
               <span>O piloto ficará salvo na memória para você poder desfazer e recuperar posteriormente.</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 pt-2">
+            <div className="grid grid-cols-2 gap-2.5 pt-1 relative z-30">
               <button
                 type="button"
                 onClick={() => setDeletingSlotIndex(null)}
-                className="py-3 px-4 bg-[#1e1e28] hover:bg-[#282838] text-white font-display font-black italic uppercase rounded-2xl text-xs transition-all cursor-pointer border border-white/10"
+                className="min-h-[48px] py-2.5 px-4 bg-[#1e1e28] hover:bg-[#282838] text-white font-display font-black italic uppercase rounded-2xl text-xs sm:text-sm transition-all cursor-pointer border border-white/10"
               >
                 CANCELAR
               </button>
               <button
                 type="button"
                 onClick={confirmDeleteSlot}
-                className="py-3 px-4 bg-red-600 hover:bg-red-500 text-white font-display font-black italic uppercase rounded-2xl text-xs transition-all cursor-pointer shadow-lg shadow-red-600/30 flex items-center justify-center gap-1.5"
+                className="min-h-[48px] py-2.5 px-4 bg-red-600 hover:bg-red-500 text-white font-display font-black italic uppercase rounded-2xl text-xs sm:text-sm transition-all cursor-pointer shadow-lg shadow-red-600/30 flex items-center justify-center gap-1.5"
               >
                 <Trash2 className="w-4 h-4" />
-                <span>CONFIRMAR EXCLUSÃO</span>
+                <span>EXCLUIR</span>
               </button>
             </div>
           </motion.div>
@@ -2079,39 +2103,44 @@ export default function App() {
 
       {/* DRIVER CREATION MODAL */}
       {isCreatingDriver && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/85 backdrop-blur-md overflow-hidden">
           <motion.div 
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="max-w-lg w-full bg-[#14141c] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl my-auto"
+            className="max-w-lg w-full max-h-[96vh] bg-[#14141c] border border-white/10 rounded-3xl p-4 sm:p-6 shadow-2xl my-auto overflow-hidden flex flex-col justify-between gap-3"
           >
-            <h3 className="text-2xl font-display font-black italic uppercase text-[#e6ff55] mb-1">Novo Piloto // Slot {creatingSlotId + 1}</h3>
-            <p className="text-[#8e8e9c] text-xs mb-5 font-mono">Personalize os dados do piloto e configure a pintura vetorial do seu capacete.</p>
+            <div>
+              <h3 className="text-xl font-display font-black italic uppercase text-[#e6ff55] mb-0.5">Novo Piloto // Slot {creatingSlotId + 1}</h3>
+              <p className="text-[#8e8e9c] text-[11px] mb-2.5 font-mono">Personalize os dados do piloto e configure a pintura vetorial do seu capacete.</p>
 
-            <div className="bg-[#070709] border border-white/5 rounded-2xl p-4 mb-5 flex flex-col items-center justify-center">
-              <HelmetVector 
-                primaryColor={newHelmetPrimary} 
-                secondaryColor={newHelmetSecondary} 
-                className="w-28 h-28" 
-              />
-              <span className="text-[10px] font-mono text-[#8e8e9c] mt-2 uppercase">Prévia Oficial do Capacete</span>
+              <div className="bg-[#070709] border border-white/5 rounded-2xl p-2.5 flex items-center justify-center gap-4">
+                <HelmetVector 
+                  primaryColor={newHelmetPrimary} 
+                  secondaryColor={newHelmetSecondary} 
+                  className="w-14 h-14 sm:w-16 sm:h-16 shrink-0" 
+                />
+                <div className="text-left">
+                  <span className="text-[10px] font-mono text-[#e6ff55] uppercase block font-bold">Prévia Oficial do Capacete</span>
+                  <span className="text-[11px] font-mono text-[#8e8e9c]">Escolha as cores abaixo para personalizar</span>
+                </div>
+              </div>
             </div>
 
-            <form onSubmit={handleCreateDriver} className="space-y-4">
+            <form onSubmit={handleCreateDriver} className="space-y-2.5">
               <div>
-                <label className="block text-xs font-mono font-bold uppercase tracking-wider text-[#8e8e9c] mb-1.5">Nome do Piloto</label>
+                <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-[#8e8e9c] mb-1">Nome do Piloto</label>
                 <input 
                   type="text" 
                   name="driverName" 
                   defaultValue="Lucas Senna" 
                   required
-                  className="w-full bg-[#070709] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#e6ff55]"
+                  className="w-full min-h-[42px] bg-[#070709] border border-white/10 rounded-xl px-3.5 py-2 text-white text-xs sm:text-sm focus:outline-none focus:border-[#e6ff55]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-mono font-bold uppercase tracking-wider text-[#8e8e9c] mb-1.5">Nacionalidade</label>
-                <select name="nationality" className="w-full bg-[#070709] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm">
+                <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-[#8e8e9c] mb-1">Nacionalidade</label>
+                <select name="nationality" className="w-full min-h-[42px] bg-[#070709] border border-white/10 rounded-xl px-3.5 py-2 text-white text-xs sm:text-sm">
                   <option value="Brasil 🇧🇷">Brasil 🇧🇷</option>
                   <option value="Portugal 🇵🇹">Portugal 🇵🇹</option>
                   <option value="Argentina 🇦🇷">Argentina 🇦🇷</option>
@@ -2123,10 +2152,10 @@ export default function App() {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-xs font-mono font-bold uppercase tracking-wider text-[#8e8e9c] mb-1.5">Cor Principal</label>
-                  <div className="flex items-center gap-2 bg-[#070709] border border-white/10 rounded-xl p-2">
+                  <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-[#8e8e9c] mb-1">Cor Principal</label>
+                  <label className="flex items-center gap-2 bg-[#070709] border border-white/10 hover:border-[#e6ff55] rounded-xl p-2 cursor-pointer">
                     <input 
                       type="color" 
                       value={newHelmetPrimary}
@@ -2134,11 +2163,11 @@ export default function App() {
                       className="w-8 h-7 bg-transparent cursor-pointer rounded" 
                     />
                     <span className="text-xs font-mono text-slate-300 uppercase">{newHelmetPrimary}</span>
-                  </div>
+                  </label>
                 </div>
                 <div>
-                  <label className="block text-xs font-mono font-bold uppercase tracking-wider text-[#8e8e9c] mb-1.5">Faixas / Detalhes</label>
-                  <div className="flex items-center gap-2 bg-[#070709] border border-white/10 rounded-xl p-2">
+                  <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-[#8e8e9c] mb-1">Faixas / Detalhes</label>
+                  <label className="flex items-center gap-2 bg-[#070709] border border-white/10 hover:border-[#e6ff55] rounded-xl p-2 cursor-pointer">
                     <input 
                       type="color" 
                       value={newHelmetSecondary}
@@ -2146,21 +2175,21 @@ export default function App() {
                       className="w-8 h-7 bg-transparent cursor-pointer rounded" 
                     />
                     <span className="text-xs font-mono text-slate-300 uppercase">{newHelmetSecondary}</span>
-                  </div>
+                  </label>
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-3">
+              <div className="flex gap-2.5 pt-2 relative z-30">
                 <button
                   type="button"
                   onClick={() => setIsCreatingDriver(false)}
-                  className="flex-1 bg-[#1e1e28] hover:bg-[#282836] text-white font-display font-black italic uppercase py-3 rounded-full text-sm transition-colors cursor-pointer"
+                  className="flex-1 min-h-[48px] bg-[#1e1e28] hover:bg-[#282836] text-white font-display font-black italic uppercase py-2.5 rounded-xl text-xs sm:text-sm transition-colors cursor-pointer border border-white/10"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase py-3 rounded-full shadow-lg shadow-[#e6ff55]/20 cursor-pointer text-sm"
+                  className="flex-1 min-h-[48px] bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase py-2.5 rounded-xl shadow-lg shadow-[#e6ff55]/20 cursor-pointer text-xs sm:text-sm"
                 >
                   Iniciar Carreira
                 </button>
@@ -2181,19 +2210,19 @@ export default function App() {
                 initial={{ opacity: 0, y: -20, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -20, scale: 0.95 }}
-                className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-[#e6ff55] text-black border-2 border-black rounded-2xl px-6 py-3.5 shadow-[0_12px_40px_rgba(230,255,85,0.4)] flex items-center gap-3.5 pointer-events-auto"
+                className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-[#e6ff55] text-black border-2 border-black rounded-2xl px-5 py-2.5 shadow-[0_12px_40px_rgba(230,255,85,0.4)] flex items-center gap-3 pointer-events-auto"
               >
-                <div className="p-2 bg-black text-[#e6ff55] rounded-xl shrink-0">
-                  <Award className="w-5 h-5" />
+                <div className="p-1.5 bg-black text-[#e6ff55] rounded-xl shrink-0">
+                  <Award className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-black/70">
+                  <div className="text-[9px] font-mono font-bold uppercase tracking-wider text-black/70">
                     CONQUISTA DE CARREIRA RESGATADA!
                   </div>
-                  <div className="text-sm sm:text-base font-display font-black italic uppercase text-black">
+                  <div className="text-xs sm:text-sm font-display font-black italic uppercase text-black">
                     {claimedMilestoneToast.title}
                   </div>
-                  <div className="text-xs font-mono font-extrabold text-black">
+                  <div className="text-[11px] font-mono font-extrabold text-black">
                     +${claimedMilestoneToast.money.toFixed(1)}M no Orçamento · +{claimedMilestoneToast.xp} XP de Treino
                   </div>
                 </div>
@@ -2203,42 +2232,42 @@ export default function App() {
           
           {/* DESKTOP LEFT SIDEBAR NAVIGATION (VISIBLE WHEN WIDESCREEN MODE IS ACTIVE ON MD+ SCREENS) */}
           {isWidescreenMode && (
-            <aside className="hidden md:flex w-64 lg:w-72 bg-[#101017] border-r border-white/5 flex-col justify-between p-5 shrink-0 select-none">
-              <div className="space-y-6">
+            <aside className="hidden md:flex w-56 lg:w-64 bg-[#101017] border-r border-white/5 flex-col justify-between p-3.5 shrink-0 select-none overflow-hidden">
+              <div className="space-y-3.5 min-h-0">
                 {/* Brand Logo */}
-                <div className="flex items-center justify-between border-b border-white/5 pb-4">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-[#e6ff55] text-black flex items-center justify-center font-black shadow-md shadow-[#e6ff55]/20">
-                      <Trophy className="w-5 h-5" />
+                <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-[#e6ff55] text-black flex items-center justify-center font-black shadow-md shadow-[#e6ff55]/20 shrink-0">
+                      <Trophy className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-lg font-display font-black italic uppercase text-white leading-none">
+                      <div className="text-base font-display font-black italic uppercase text-white leading-none">
                         APEX GP <span className="text-[#e6ff55]">26</span>
                       </div>
-                      <span className="text-[10px] font-mono text-[#8e8e9c] uppercase">Desktop Pit Wall</span>
+                      <span className="text-[9px] font-mono text-[#8e8e9c] uppercase">Desktop Pit Wall</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Active Driver Mini Profile Card */}
-                <div className="bg-[#14141c] border border-white/5 rounded-2xl p-3.5 space-y-2.5 shadow-inner">
-                  <div className="flex items-center gap-3">
+                <div className="bg-[#14141c] border border-white/5 rounded-2xl p-2.5 space-y-2 shadow-inner">
+                  <div className="flex items-center gap-2.5">
                     <HelmetVector 
                       primaryColor={driver.helmetColor} 
                       secondaryColor={driver.helmetSecondaryColor || '#1e3a8a'} 
-                      className="w-11 h-11 shrink-0" 
+                      className="w-9 h-9 shrink-0" 
                     />
                     <div className="min-w-0">
-                      <div className="text-sm font-display font-black italic uppercase text-white truncate">
+                      <div className="text-xs font-display font-black italic uppercase text-white truncate">
                         {driver.name}
                       </div>
-                      <div className="text-[11px] font-mono truncate" style={{ color: currentTeam.color }}>
+                      <div className="text-[10px] font-mono truncate" style={{ color: currentTeam.color }}>
                         {currentTeam.name}
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between text-[10px] font-mono pt-2 border-t border-white/5">
-                    <span className="px-2 py-0.5 rounded-full bg-[#ff5f8f]/20 text-[#ff5f8f] font-bold uppercase">
+                  <div className="flex items-center justify-between text-[9px] font-mono pt-1.5 border-t border-white/5">
+                    <span className="px-2 py-0.2 rounded-full bg-[#ff5f8f]/20 text-[#ff5f8f] font-bold uppercase">
                       {driver.category}
                     </span>
                     <span className="text-[#e6ff55] font-bold">
@@ -2248,7 +2277,7 @@ export default function App() {
                 </div>
 
                 {/* Vertical Navigation Menu */}
-                <nav aria-label="Menu Desktop" className="space-y-1.5">
+                <nav aria-label="Menu Desktop" className="space-y-1">
                   {[
                     { id: 'garagem', label: 'Garagem & Telemetria', icon: User, badge: `Etapa ${currentRaceIndex + 1}` },
                     { id: 'treino', label: 'Centro de Evolução', icon: Zap, badge: trainingPoints > 0 ? `${trainingPoints} XP` : undefined },
@@ -2268,11 +2297,12 @@ export default function App() {
                     return (
                       <button
                         key={item.id}
+                        type="button"
                         onClick={() => switchHubTab(item.id as HubTab)}
-                        className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-mono transition-all cursor-pointer ${
+                        className={`w-full min-h-[42px] flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-mono transition-all cursor-pointer relative z-20 ${
                           isHero
                             ? isActive
-                              ? 'bg-[#e6ff55] text-black font-display font-black italic uppercase shadow-lg shadow-[#e6ff55]/30 ring-2 ring-[#e6ff55] text-sm'
+                              ? 'bg-[#e6ff55] text-black font-display font-black italic uppercase shadow-lg shadow-[#e6ff55]/30 ring-2 ring-[#e6ff55]'
                               : 'bg-[#191924] text-[#8e8e9c] hover:bg-[#1e1e2d] hover:text-white font-display font-black italic uppercase border border-white/10 shadow-sm'
                             : isActive
                             ? 'bg-[#e6ff55] text-black font-bold shadow-lg shadow-[#e6ff55]/15'
@@ -2297,62 +2327,69 @@ export default function App() {
               </div>
 
               {/* Bottom Quick Actions in Sidebar */}
-              <div className="space-y-2 pt-4 border-t border-white/5">
+              <div className="space-y-2 pt-3 border-t border-white/5 shrink-0 relative z-20">
                 <button
-                  onClick={() => setGameState('qualifying')}
-                  className="w-full bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase py-3 rounded-2xl text-xs tracking-wider transition-all shadow-lg shadow-[#e6ff55]/20 cursor-pointer flex items-center justify-center gap-2"
+                  type="button"
+                  onClick={startQualifying}
+                  className="w-full min-h-[44px] bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase py-2.5 px-3 rounded-xl text-xs tracking-wider transition-all shadow-lg shadow-[#e6ff55]/20 cursor-pointer flex items-center justify-center gap-2"
                 >
-                  <Play className="w-4 h-4 fill-current" />
-                  <span>DISPUTAR GP ({currentTrack.circuit.split(' ')[0]})</span>
+                  <Play className="w-4 h-4 fill-current shrink-0" />
+                  <span className="truncate">DISPUTAR GP ({currentTrack.circuit.split(' ')[0]})</span>
                 </button>
 
                 <button
+                  type="button"
                   onClick={handleSaveAndReturnToMenu}
-                  className="w-full bg-[#1e1e2d] hover:bg-[#e6ff55] hover:text-black text-[#e6ff55] font-display font-black italic uppercase py-2.5 rounded-xl text-xs transition-all cursor-pointer flex items-center justify-center gap-2 border border-[#e6ff55]/40 shadow-sm"
+                  className="w-full min-h-[40px] bg-[#1e1e2d] hover:bg-[#e6ff55] hover:text-black text-[#e6ff55] font-display font-black italic uppercase py-2 px-3 rounded-xl text-xs transition-all cursor-pointer flex items-center justify-center gap-2 border border-[#e6ff55]/40 shadow-sm"
                   title="Salvar e voltar ao menu de seleção de pilotos a qualquer momento"
                 >
-                  <Save className="w-3.5 h-3.5" />
-                  <span>SALVAR & MENU DE PILOTOS</span>
+                  <Save className="w-3.5 h-3.5 shrink-0" />
+                  <span>SALVAR & MENU</span>
                 </button>
 
-                <button
-                  onClick={() => setIsSettingsOpen(true)}
-                  className="w-full bg-[#191924] hover:bg-[#222232] text-white font-display font-black italic uppercase py-2 rounded-xl text-xs transition-all cursor-pointer flex items-center justify-center gap-2 border border-white/10 shadow-sm"
-                  title="Abrir configurações do jogo"
-                >
-                  <Settings className="w-3.5 h-3.5 text-[#e6ff55]" />
-                  <span>CONFIGURAÇÕES</span>
-                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsSettingsOpen(true)}
+                    className="w-full min-h-[38px] bg-[#191924] hover:bg-[#222232] text-white font-display font-black italic uppercase py-2 rounded-xl text-[11px] transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-white/10 shadow-sm"
+                    title="Abrir configurações do jogo"
+                  >
+                    <Settings className="w-3.5 h-3.5 text-[#e6ff55]" />
+                    <span>CONFIG</span>
+                  </button>
 
-                <button
-                  onClick={() => setIsWidescreenMode(false)}
-                  className="w-full py-1.5 bg-[#14141c] hover:bg-[#1e1e2a] text-[#8e8e9c] hover:text-white rounded-xl text-[10px] font-mono border border-white/5 transition-colors cursor-pointer text-center"
-                  title="Visualizar no formato compacto de celular"
-                >
-                  📱 Modo Mobile
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsWidescreenMode(false)}
+                    className="w-full min-h-[38px] py-2 bg-[#14141c] hover:bg-[#1e1e2a] text-[#8e8e9c] hover:text-white rounded-xl text-[11px] font-mono border border-white/5 transition-colors cursor-pointer text-center"
+                    title="Visualizar no formato compacto de celular"
+                  >
+                    📱 Mobile
+                  </button>
+                </div>
               </div>
             </aside>
           )}
 
-          {/* MAIN SCROLLABLE HUB CONTENT AREA */}
-          <div className="flex-1 flex flex-col p-4 sm:p-6 lg:p-8 overflow-y-auto space-y-6 max-w-[1500px] w-full mx-auto">
+          {/* MAIN HUB CONTENT AREA (SINGLE VIEWPORT NO-SCROLL WORKSPACE) */}
+          <div className={`flex-1 min-h-0 flex flex-col p-2.5 sm:p-3.5 lg:px-5 lg:py-3 overflow-hidden gap-2.5 max-w-[1560px] w-full mx-auto ${!isWidescreenMode ? 'pb-16' : 'pb-16 md:pb-3'}`}>
             
             {/* TOP BAR & CHAMPIONSHIP PROGRESS - YOUR CAREER COLLAPSIBLE PANEL */}
             {isCareerPanelMinimized ? (
-              /* MINIMIZED CAREER SUMMARY BAR */
-              <div className="bg-[#14141c] border border-white/10 rounded-2xl p-3 sm:p-4 shadow-xl flex flex-wrap items-center justify-between gap-3 transition-all">
-                <div className="flex flex-wrap items-center gap-3 min-w-0">
-                  <span className="text-[10px] font-display font-black italic uppercase px-2.5 py-0.5 rounded-full bg-[#ff5f8f]/20 text-[#ff5f8f] border border-[#ff5f8f]/30">
+              /* MINIMIZED CAREER SUMMARY BAR (DEFAULT FOR MAXIMUM WORKSPACE HEIGHT) */
+              <div className="bg-[#14141c] border border-white/10 rounded-2xl px-3.5 py-2 shadow-xl flex flex-wrap items-center justify-between gap-2 transition-all shrink-0 relative z-20">
+                <div className="flex flex-wrap items-center gap-2.5 min-w-0">
+                  <HelmetVector primaryColor={driver.helmetColor} secondaryColor={driver.helmetSecondaryColor || '#1e3a8a'} className="w-7 h-7 shrink-0" />
+                  <span className="text-[10px] font-display font-black italic uppercase px-2.5 py-0.5 rounded-full bg-[#ff5f8f]/20 text-[#ff5f8f] border border-[#ff5f8f]/30 shrink-0">
                     {driver.category.toUpperCase()} · {currentTeam.name}
                   </span>
-                  <h2 className="text-base sm:text-xl font-display font-black italic uppercase text-[#e6ff55] truncate">
-                    YOUR CAREER // {driver.name}
+                  <h2 className="text-sm sm:text-base font-display font-black italic uppercase text-[#e6ff55] truncate">
+                    {driver.name}
                   </h2>
-                  <div className="hidden md:flex items-center gap-2.5 text-xs font-mono text-[#8e8e9c] bg-[#070709] px-3 py-1 rounded-xl border border-white/5">
+                  <div className="hidden lg:flex items-center gap-2.5 text-xs font-mono text-[#8e8e9c] bg-[#070709] px-3 py-1 rounded-xl border border-white/5">
                     <span>Mundial: <strong className="text-white">P{currentPlayerRank} ({playerPoints}pts)</strong></span>
                     <span>·</span>
-                    <span>FIA: <strong className="text-[#ff5f8f]">{calculateDriverAvg(driver.attributes)} OVR</strong></span>
+                    <span>Média FIA: <strong className="text-[#ff5f8f]">{calculateDriverAvg(driver.attributes)}/90</strong></span>
                     <span>·</span>
                     <span>Saldo: <strong className="text-[#e6ff55]">${driver.money.toFixed(1)}M</strong></span>
                     <span>·</span>
@@ -2360,206 +2397,181 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <button
+                    type="button"
+                    onClick={() => setIsCareerPanelMinimized(false)}
+                    className="min-h-[38px] px-3 py-1.5 bg-[#191924] hover:bg-[#242434] text-white font-mono text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 border border-white/10"
+                  >
+                    <span>RESUMO & CARRO</span>
+                    <ChevronDown className="w-3.5 h-3.5 text-[#e6ff55]" />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setIsSettingsOpen(true)}
-                    className="p-2 bg-[#191924] hover:bg-[#242434] text-[#e6ff55] rounded-xl transition-all border border-white/10 cursor-pointer flex items-center justify-center shadow-md"
+                    className="min-h-[38px] px-2.5 py-1.5 bg-[#191924] hover:bg-[#242434] text-[#e6ff55] rounded-xl transition-all border border-white/10 cursor-pointer flex items-center justify-center shadow-md"
                     title="Configurações do Jogo"
                   >
                     <Settings className="w-4 h-4" />
                   </button>
                   <button
+                    type="button"
                     onClick={handleSaveAndReturnToMenu}
-                    className="px-3.5 py-1.5 bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase text-xs rounded-xl transition-all shadow-md cursor-pointer flex items-center gap-1.5"
+                    className="min-h-[38px] px-3 py-1.5 bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase text-xs rounded-xl transition-all shadow-md cursor-pointer flex items-center gap-1.5"
                     title="Salvar e voltar ao menu de seleção de pilotos"
                   >
                     <Save className="w-3.5 h-3.5" />
-                    <span>SALVAR & MENU</span>
-                  </button>
-                  <button
-                    onClick={() => setIsCareerPanelMinimized(false)}
-                    className="px-3.5 py-1.5 bg-[#191924] hover:bg-[#242434] text-white font-mono text-xs rounded-xl transition-all cursor-pointer flex items-center gap-1.5 border border-white/10"
-                  >
-                    <span>EXPANDIR</span>
-                    <ChevronDown className="w-3.5 h-3.5 text-[#e6ff55]" />
+                    <span className="hidden sm:inline">SALVAR & MENU</span>
                   </button>
                 </div>
               </div>
             ) : (
-              /* EXPANDED ULTRA-COMPACT CAREER PANEL */
-              <div className="bg-[#14141c] border border-white/5 rounded-3xl p-3 sm:p-4 shadow-xl relative overflow-hidden space-y-3">
-                
-                {/* TOP HEADER ROW */}
+              /* EXPANDED CAREER PANEL */
+              <div className="bg-[#14141c] border border-white/10 rounded-2xl p-3 sm:px-4 sm:py-3 shadow-xl relative z-20 overflow-hidden space-y-2.5 shrink-0">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-2">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <HelmetVector primaryColor={driver.helmetColor} secondaryColor={driver.helmetSecondaryColor || '#1e3a8a'} className="w-7 h-7 shrink-0" />
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h2 className="text-base sm:text-xl font-display font-black italic uppercase text-[#e6ff55] leading-none tracking-tight truncate">
-                          YOUR CAREER // {driver.name}
-                        </h2>
-                        <span className="text-[9px] font-display font-black italic uppercase px-2 py-0.5 rounded-full bg-[#ff5f8f]/20 text-[#ff5f8f] border border-[#ff5f8f]/30 shrink-0">
-                          {driver.category.toUpperCase()} · {currentTeam.name}
-                        </span>
-                      </div>
-                      <div className="text-[10px] font-mono text-[#8e8e9c] mt-0.5">
-                        TEMPORADA {currentSeason} · ETAPA {currentRaceIndex + 1} DE {catTracks.length}
-                      </div>
+                    <div className="min-w-0 flex items-center gap-2 flex-wrap">
+                      <h2 className="text-sm sm:text-base font-display font-black italic uppercase text-[#e6ff55] leading-none tracking-tight truncate">
+                        CARREIRA // {driver.name}
+                      </h2>
+                      <span className="text-[10px] font-display font-black italic uppercase px-2.5 py-0.5 rounded-full bg-[#ff5f8f]/20 text-[#ff5f8f] border border-[#ff5f8f]/30 shrink-0">
+                        {driver.category.toUpperCase()} · {currentTeam.name}
+                      </span>
+                      <span className="text-xs font-mono text-[#8e8e9c] hidden sm:inline">
+                        · ANO {currentSeason} · ETAPA {currentRaceIndex + 1}/{catTracks.length}
+                      </span>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0">
                     <button
+                      type="button"
+                      onClick={() => setIsCareerPanelMinimized(true)}
+                      className="min-h-[38px] px-3 py-1.5 bg-[#070709] hover:bg-[#191924] border border-white/10 hover:border-[#e6ff55] text-white rounded-xl text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+                    >
+                      <ChevronUp className="w-3.5 h-3.5 text-[#e6ff55]" />
+                      <span>OCULTAR PAINEL</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setIsSettingsOpen(true)}
-                      className="p-1.5 bg-[#191924] hover:bg-[#242434] text-[#e6ff55] rounded-xl transition-all border border-white/10 cursor-pointer flex items-center justify-center shadow-md"
+                      className="min-h-[38px] px-2.5 py-1.5 bg-[#191924] hover:bg-[#242434] text-[#e6ff55] rounded-xl transition-all border border-white/10 cursor-pointer flex items-center justify-center shadow-md"
                       title="Configurações do Jogo"
                     >
                       <Settings className="w-4 h-4" />
                     </button>
                     <button
+                      type="button"
                       onClick={handleSaveAndReturnToMenu}
-                      className="px-3 py-1 bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase text-xs rounded-xl transition-all shadow-md cursor-pointer flex items-center gap-1"
-                      title="Salvar progresso do piloto e voltar ao menu de seleção"
+                      className="min-h-[38px] px-3 py-1.5 bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase text-xs rounded-xl transition-all shadow-md cursor-pointer flex items-center gap-1.5"
                     >
                       <Save className="w-3.5 h-3.5" />
                       <span className="hidden sm:inline">SALVAR & MENU</span>
                     </button>
-                    <button
-                      onClick={() => setIsCareerPanelMinimized(true)}
-                      className="px-2.5 py-1 bg-[#070709] hover:bg-[#191924] border border-white/10 hover:border-[#e6ff55] text-white rounded-xl text-xs font-mono transition-all cursor-pointer flex items-center gap-1 shadow-sm"
-                      title="Minimizar painel para economizar espaço"
-                    >
-                      <ChevronUp className="w-3.5 h-3.5 text-[#e6ff55]" />
-                      <span className="hidden sm:inline font-bold text-[11px]">Minimizar</span>
-                    </button>
                   </div>
                 </div>
 
-                {/* COMPACT HORIZONTAL LAYOUT: CAR ON LEFT, STATS ON RIGHT */}
-                <div className="flex flex-col md:flex-row items-center gap-3">
-                  
-                  {/* CAR VISUAL (LEFT SIDE OF CAR PANEL) */}
-                  <div className="w-full md:w-auto md:shrink-0 bg-[#070709] border border-white/10 rounded-2xl px-3 py-2 flex items-center justify-between md:justify-start gap-3 relative overflow-hidden shadow-inner group">
-                    <div 
-                      className="absolute inset-0 opacity-20 pointer-events-none transition-opacity duration-500 group-hover:opacity-30 blur-xl"
-                      style={{
-                        background: `radial-gradient(circle at center, ${currentTeam.color} 0%, transparent 70%)`
-                      }}
+                <div className="flex flex-col md:flex-row items-center gap-2.5">
+                  <div className="w-full md:w-auto md:shrink-0 bg-[#070709] border border-white/10 rounded-xl px-3 py-1.5 flex items-center justify-between md:justify-start gap-3 relative overflow-hidden">
+                    <div className="text-left">
+                      <div className="text-[9px] font-mono text-[#8e8e9c] uppercase">{currentTeam.name}</div>
+                      <div className="text-xs font-display font-black italic text-white uppercase">{driver.category.toUpperCase()} SPEC</div>
+                    </div>
+                    <CategoryCarVector 
+                      category={driver.category} 
+                      teamColor={currentTeam.color} 
+                      secondaryColor="#ffffff" 
+                      helmetColor={driver.helmetColor} 
+                      className="w-28 sm:w-32 h-9 sm:h-10 object-contain" 
                     />
-                    <div className="relative z-10 flex items-center gap-2">
-                      <div className="text-left">
-                        <div className="text-[9px] font-mono text-[#8e8e9c] uppercase">{currentTeam.name}</div>
-                        <div className="text-[10px] font-display font-black italic text-white uppercase">{driver.category === 'f1' ? 'F1 HYBRID' : driver.category === 'f2' ? 'F2 SPEC' : driver.category === 'f3' ? 'F3 SPEC' : 'KART 125CC'}</div>
-                      </div>
-                    </div>
-
-                    <div className="relative z-10 flex items-center justify-center px-1">
-                      <CategoryCarVector 
-                        category={driver.category} 
-                        teamColor={currentTeam.color} 
-                        secondaryColor="#ffffff" 
-                        helmetColor={driver.helmetColor} 
-                        className="w-36 sm:w-44 h-12 sm:h-14 object-contain drop-shadow-[0_6px_12px_rgba(0,0,0,0.85)] transform transition-transform duration-300 group-hover:scale-105" 
-                      />
-                    </div>
                   </div>
 
-                  {/* ALL STATS (RIGHT SIDE OF CAR PANEL) */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 flex-1 w-full">
-                    
-                    {/* 1. Mundial Position */}
-                    <div className="bg-[#070709] p-2 rounded-xl border border-white/5 flex items-center gap-2">
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 flex-1 w-full">
+                    <div className="bg-[#070709] p-2 rounded-xl border border-white/5 flex items-center gap-2 min-w-0">
                       <div className="w-7 h-7 rounded-lg bg-[#38bdf8] text-black flex items-center justify-center font-bold shrink-0">
                         <Trophy className="w-3.5 h-3.5" />
                       </div>
                       <div className="min-w-0">
-                        <div className="text-[9px] font-mono text-[#8e8e9c]">Mundial</div>
-                        <div className="text-xs sm:text-sm font-display font-black italic text-white leading-tight truncate">
+                        <div className="text-[9px] font-mono text-[#8e8e9c] leading-none">Mundial</div>
+                        <div className="text-xs font-display font-black italic text-white truncate">
                           P{currentPlayerRank} <span className="text-[10px] text-[#38bdf8] font-normal">({playerPoints}p)</span>
                         </div>
                       </div>
                     </div>
 
-                    {/* 2. Média FIA */}
-                    <div className="bg-[#070709] p-2 rounded-xl border border-white/5 flex items-center gap-2">
+                    <div className="bg-[#070709] p-2 rounded-xl border border-white/5 flex items-center gap-2 min-w-0">
                       <div className="w-7 h-7 rounded-lg bg-[#ff5f8f] text-black flex items-center justify-center font-bold shrink-0">
                         <Activity className="w-3.5 h-3.5" />
                       </div>
                       <div className="min-w-0">
-                        <div className="text-[9px] font-mono text-[#8e8e9c]">Média FIA</div>
-                        <div className="text-xs sm:text-sm font-display font-black italic text-white leading-tight truncate">
-                          {calculateDriverAvg(driver.attributes)} <span className="text-[10px] text-[#ff5f8f]/80 font-normal">/90</span>
+                        <div className="text-[9px] font-mono text-[#8e8e9c] leading-none">Média FIA</div>
+                        <div className="text-xs font-display font-black italic text-white truncate">
+                          {calculateDriverAvg(driver.attributes)} <span className="text-[10px] text-[#ff5f8f]">/90</span>
                         </div>
                       </div>
                     </div>
 
-                    {/* 3. Orçamento */}
-                    <div className="bg-[#070709] p-2 rounded-xl border border-white/5 flex items-center gap-2">
+                    <div className="bg-[#070709] p-2 rounded-xl border border-white/5 flex items-center gap-2 min-w-0">
                       <div className="w-7 h-7 rounded-lg bg-[#e6ff55] text-black flex items-center justify-center font-bold shrink-0">
                         <DollarSign className="w-3.5 h-3.5" />
                       </div>
                       <div className="min-w-0">
-                        <div className="text-[9px] font-mono text-[#8e8e9c]">Orçamento</div>
-                        <div className="text-xs sm:text-sm font-display font-black italic text-[#e6ff55] leading-tight truncate">
+                        <div className="text-[9px] font-mono text-[#8e8e9c] leading-none">Saldo</div>
+                        <div className="text-xs font-display font-black italic text-[#e6ff55] truncate">
                           ${driver.money.toFixed(1)}M
                         </div>
                       </div>
                     </div>
 
-                    {/* 4. XP Treino */}
-                    <div 
+                    <button
+                      type="button"
                       onClick={() => switchHubTab('treino')}
-                      className="bg-[#070709] hover:border-emerald-400/50 p-2 rounded-xl border border-white/5 flex items-center gap-2 cursor-pointer group/xp transition-colors"
+                      className="bg-[#070709] hover:border-emerald-400/50 p-2 rounded-xl border border-white/5 flex items-center gap-2 cursor-pointer transition-colors min-w-0 text-left"
                     >
-                      <div className="w-7 h-7 rounded-lg bg-emerald-400 text-black flex items-center justify-center font-bold shrink-0 group-hover/xp:scale-105 transition-transform">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-400 text-black flex items-center justify-center font-bold shrink-0">
                         <Zap className="w-3.5 h-3.5" />
                       </div>
                       <div className="min-w-0">
-                        <div className="text-[9px] font-mono text-[#8e8e9c] group-hover/xp:text-emerald-400 flex items-center gap-0.5">
-                          <span>Treino XP</span>
-                        </div>
-                        <div className="text-xs sm:text-sm font-display font-black italic text-emerald-400 leading-tight truncate">
+                        <div className="text-[9px] font-mono text-[#8e8e9c] leading-none">Treino</div>
+                        <div className="text-xs font-display font-black italic text-emerald-400 truncate">
                           {trainingPoints} XP
                         </div>
                       </div>
-                    </div>
+                    </button>
 
-                    {/* 5. Retrospecto */}
-                    <div className="bg-[#070709] p-2 rounded-xl border border-white/5 flex items-center gap-2">
+                    <div className="bg-[#070709] p-2 rounded-xl border border-white/5 flex items-center gap-2 min-w-0">
                       <div className="w-7 h-7 rounded-lg bg-amber-400 text-black flex items-center justify-center font-bold shrink-0">
                         <Award className="w-3.5 h-3.5" />
                       </div>
                       <div className="min-w-0">
-                        <div className="text-[9px] font-mono text-[#8e8e9c]">Retrospecto</div>
-                        <div className="text-xs font-display font-black italic text-white leading-tight truncate">
-                          {driver.careerStats?.wins || 0}V · {driver.careerStats?.poles || 0}P · {driver.careerStats?.podiums || 0}Pód
+                        <div className="text-[9px] font-mono text-[#8e8e9c] leading-none">Carreira</div>
+                        <div className="text-xs font-display font-black italic text-white truncate">
+                          {driver.careerStats?.wins || 0}V · {driver.careerStats?.podiums || 0}Pd
                         </div>
                       </div>
                     </div>
 
-                    {/* 6. Bônus Equipe */}
-                    <div className="bg-[#070709] p-2 rounded-xl border border-white/5 flex items-center gap-2">
+                    <div className="bg-[#070709] p-2 rounded-xl border border-white/5 flex items-center gap-2 min-w-0">
                       <div className="w-7 h-7 rounded-lg bg-purple-400 text-black flex items-center justify-center font-bold shrink-0">
                         <Wrench className="w-3.5 h-3.5" />
                       </div>
                       <div className="min-w-0">
-                        <div className="text-[9px] font-mono text-[#8e8e9c]">Equipe</div>
-                        <div className="text-[10px] font-display font-black italic text-purple-300 leading-tight truncate" title={currentTeam.bonusType}>
+                        <div className="text-[9px] font-mono text-[#8e8e9c] leading-none">Bônus</div>
+                        <div className="text-[11px] font-display font-black italic text-purple-300 truncate">
                           {currentTeam.bonusType}
                         </div>
                       </div>
                     </div>
-
                   </div>
                 </div>
-
               </div>
             )}
 
-            <div className="relative z-10 pb-12 space-y-6 overflow-x-hidden">
+            <div className="relative z-10 flex-1 min-h-0 flex flex-col overflow-hidden">
               <AnimatePresence mode="wait" custom={tabDirection}>
                 
-                {/* TAB 1: GARAGEM (RESPONSIVE 12-COLUMN DESKTOP BENTO GRID) */}
+                {/* TAB 1: GARAGEM (2-IN-1 PAGE TOGGLE FOR ZERO OVERLAP & LARGE BUTTONS) */}
                 {activeTab === 'garagem' && (
                   <motion.div 
                     key="garagem"
@@ -2568,240 +2580,356 @@ export default function App() {
                     initial="enter"
                     animate="center"
                     exit="exit"
-                    className={`grid gap-6 ${isWidescreenMode ? 'grid-cols-1 lg:grid-cols-12' : 'grid-cols-1'}`}
+                    className="flex-1 min-h-0 flex flex-col gap-2.5 overflow-hidden"
                   >
-                    {/* LEFT / MAIN COLUMN ON DESKTOP (7 COLS) */}
-                    <div className={`${isWidescreenMode ? 'lg:col-span-7' : ''} space-y-6`}>
-                      {/* CIRCUIT TRACK MAP HERO CARD */}
-                      <div className="bg-[#14141c] border border-white/5 rounded-3xl p-5 sm:p-6 bg-dark-grid relative overflow-hidden space-y-4 shadow-xl">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="text-xs font-mono uppercase text-[#e6ff55] font-bold">
-                              Próxima Corrida · Etapa {currentRaceIndex + 1} de {catTracks.length}
-                            </span>
-                            <h4 className="text-xl sm:text-2xl font-display font-black italic uppercase text-white leading-tight mt-0.5">
-                              {currentTrack.name} ({currentTrack.country})
-                            </h4>
-                            <p className="text-xs text-[#8e8e9c] font-mono">{currentTrack.circuit} · {currentTrack.profileType}</p>
-                          </div>
-                          {(() => {
-                            const wb = getWeatherBadge(currentTrack.weather);
-                            return (
-                              <span className="text-xs font-mono font-bold px-3 py-1 rounded-full bg-[#1e1e28] text-white border border-white/10 flex items-center gap-1.5">
-                                <span>{wb.icon}</span>
-                                <span>{wb.label}</span>
-                              </span>
-                            );
-                          })()}
-                        </div>
-
-                        {/* Vector Track Map with Glowing Yellow Path & Pink Arrow */}
-                        <div className="w-full h-40 sm:h-48 flex items-center justify-center bg-black/50 rounded-2xl p-4 border border-white/5">
-                          <TrackMapVector 
-                            svgPath={currentTrack.svgPath} 
-                            accentColor="#e6ff55" 
-                            className="w-full h-full"
-                            showDirectionArrow={true}
-                          />
-                        </div>
-
-                        {/* Telemetry Row */}
-                        <div className="grid grid-cols-3 gap-3 text-xs font-mono pt-1 text-[#8e8e9c] bg-[#070709]/60 p-3.5 rounded-2xl border border-white/5">
-                          <div>
-                            <div className="text-[10px] uppercase">Tempo Estimado</div>
-                            <div className="text-white font-bold text-sm mt-0.5">~01h : 34m</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-[10px] uppercase">Exigência</div>
-                            <div className="text-[#38bdf8] font-bold text-sm mt-0.5">
-                              Retas {Math.round(currentTrack.straightWeight * 100)}% / Curvas {Math.round(currentTrack.cornerWeight * 100)}%
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-[10px] uppercase">Distância</div>
-                            <div className="text-[#e6ff55] font-bold text-sm mt-0.5">{currentTrack.laps} Voltas</div>
-                          </div>
-                        </div>
-
-                        {/* Giant CTA Button to Start Qualifying / Race */}
-                        <button
-                          onClick={() => setGameState('qualifying')}
-                          className="w-full bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase py-4 rounded-full text-base sm:text-lg tracking-wider transition-all shadow-lg shadow-[#e6ff55]/20 cursor-pointer text-center block"
-                        >
-                          DISPUTAR GP ({currentTrack.circuit})
-                        </button>
-                      </div>
-
-                      {/* 5 ATTRIBUTE BENTO CARDS */}
-                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                        {[
-                          { icon: Zap, key: 'speed' as const, val: driver.attributes.speed, label: 'Velocidade', bg: 'bg-[#38bdf8]/20 text-[#38bdf8]' },
-                          { icon: Flame, key: 'overtaking' as const, val: driver.attributes.overtaking, label: 'Ultrapassagem', bg: 'bg-[#e6ff55]/20 text-[#e6ff55]' },
-                          { icon: Shield, key: 'defense' as const, val: driver.attributes.defense, label: 'Defesa', bg: 'bg-emerald-500/20 text-emerald-400' },
-                          { icon: Activity, key: 'consistency' as const, val: driver.attributes.consistency, label: 'Consistência', bg: 'bg-[#ff5f8f]/20 text-[#ff5f8f]' },
-                          { icon: Target, key: 'starts' as const, val: driver.attributes.starts, label: 'Largada', bg: 'bg-purple-500/20 text-purple-400' }
-                        ].map((attr, idx) => {
-                          const Icon = attr.icon;
-                          const teamBonus = currentTeam.attributeBonuses?.[attr.key] || 0;
-                          return (
-                            <motion.div
-                              key={attr.label}
-                              initial={{ opacity: 0, y: 15 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.35, delay: 0.06 * idx }}
-                              onClick={() => {
-                                setSelectedTrainAttr(attr.key);
-                                switchHubTab('treino');
-                              }}
-                              className="bg-[#14141c] border border-white/5 rounded-3xl p-4 space-y-1.5 hover:border-[#e6ff55]/40 transition-all shadow-md cursor-pointer"
-                            >
-                              <div className="flex items-center justify-between">
-                                <div className={`w-8 h-8 rounded-xl ${attr.bg} flex items-center justify-center`}>
-                                  <Icon className="w-4 h-4" />
-                                </div>
-                                {teamBonus > 0 && (
-                                  <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
-                                    +{teamBonus}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-2xl font-display font-black italic text-white leading-none pt-1">
-                                {attr.val}
-                              </div>
-                              <div className="text-[10px] font-mono text-[#8e8e9c] truncate">{attr.label}</div>
-                            </motion.div>
-                          );
-                        })}
-                      </div>
+                    {/* INTERNAL 2-IN-1 TOGGLE BAR */}
+                    <div className="flex items-center justify-between gap-2 bg-[#14141c] border border-white/10 rounded-2xl p-1.5 shadow-lg shrink-0 relative z-20">
+                      <button
+                        type="button"
+                        onClick={() => setGarageViewMode('pista_atributos')}
+                        className={`flex-1 min-h-[40px] py-2 px-3 rounded-xl text-xs font-display font-black italic uppercase transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                          garageViewMode === 'pista_atributos'
+                            ? 'bg-[#e6ff55] text-black shadow-md'
+                            : 'text-[#8e8e9c] hover:text-white hover:bg-white/5'
+                        }`}
+                      >
+                        <Flag className="w-4 h-4" />
+                        <span>Próximo GP & Atributos</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setGarageViewMode('equipe_saves')}
+                        className={`flex-1 min-h-[40px] py-2 px-3 rounded-xl text-xs font-display font-black italic uppercase transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                          garageViewMode === 'equipe_saves'
+                            ? 'bg-[#e6ff55] text-black shadow-md'
+                            : 'text-[#8e8e9c] hover:text-white hover:bg-white/5'
+                        }`}
+                      >
+                        <Wrench className="w-4 h-4" />
+                        <span>Chassi, Capacete & Autosaves</span>
+                      </button>
                     </div>
 
-                    {/* RIGHT COLUMN ON DESKTOP (5 COLS): CHASSIS & HELMET */}
-                    <div className={`${isWidescreenMode ? 'lg:col-span-5' : ''} space-y-6`}>
-                      {/* CHASSI & CAPACETE */}
-                      <div className="bg-[#14141c] border border-white/5 rounded-3xl p-5 space-y-4 shadow-xl">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="text-[10px] font-mono uppercase text-[#8e8e9c]">Equipe Oficial & Bônus</span>
-                            <h4 className="text-lg font-display font-black italic uppercase text-white" style={{ color: currentTeam.color }}>
-                              {currentTeam.name}
-                            </h4>
+                    {garageViewMode === 'pista_atributos' ? (
+                      /* SUB-PAGE 1: PRÓXIMA PISTA + TELEMETRIA DO PILOTO NA HORIZONTAL */
+                      <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-hidden">
+                        {/* TOP SECTION: CIRCUIT TRACK HERO */}
+                        <div className="flex-1 min-h-0 bg-[#14141c] border border-white/5 rounded-2xl p-3.5 sm:p-4 bg-dark-grid relative overflow-hidden grid grid-cols-1 lg:grid-cols-12 gap-3 items-center shadow-xl">
+                          {/* Track Info + Vector Map */}
+                          <div className="lg:col-span-7 flex flex-col justify-between h-full min-h-0 gap-2">
+                            <div className="flex items-center justify-between gap-2 shrink-0">
+                              <div className="min-w-0">
+                                <span className="text-[11px] font-mono uppercase text-[#e6ff55] font-bold block">
+                                  Etapa {currentRaceIndex + 1} de {catTracks.length} · {driver.category.toUpperCase()}
+                                </span>
+                                <h4 className="text-lg sm:text-2xl font-display font-black italic uppercase text-white leading-tight truncate">
+                                  {currentTrack.name} ({currentTrack.country})
+                                </h4>
+                                <p className="text-xs text-[#8e8e9c] font-mono truncate">{currentTrack.circuit} · {currentTrack.profileType}</p>
+                              </div>
+                              {(() => {
+                                const wb = getWeatherBadge(currentTrack.weather);
+                                return (
+                                  <span className="text-xs font-mono font-bold px-3 py-1.5 rounded-full bg-[#1e1e28] text-white border border-white/10 flex items-center gap-1.5 shrink-0">
+                                    <span>{wb.icon}</span>
+                                    <span>{wb.label}</span>
+                                  </span>
+                                );
+                              })()}
+                            </div>
+
+                            <div className="w-full flex-1 min-h-[75px] flex items-center justify-center bg-black/50 rounded-2xl p-2.5 border border-white/5">
+                              <TrackMapVector 
+                                svgPath={currentTrack.svgPath} 
+                                accentColor="#e6ff55" 
+                                className="w-full h-full max-h-[125px]"
+                                showDirectionArrow={true}
+                              />
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <span className="text-xs font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+
+                          {/* Track Stats + Quick Race Actions */}
+                          <div className="lg:col-span-5 flex flex-col justify-between h-full gap-2.5">
+                            <div className="grid grid-cols-3 gap-2 text-xs font-mono text-[#8e8e9c] bg-[#070709]/90 p-3 rounded-xl border border-white/5">
+                              <div>
+                                <div className="text-[10px] uppercase">Exigência Retas</div>
+                                <div className="text-[#38bdf8] font-bold text-sm mt-0.5">{Math.round(currentTrack.straightWeight * 100)}%</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-[10px] uppercase">Exigência Curvas</div>
+                                <div className="text-[#ff5f8f] font-bold text-sm mt-0.5">{Math.round(currentTrack.cornerWeight * 100)}%</div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-[10px] uppercase">Extensão</div>
+                                <div className="text-[#e6ff55] font-bold text-sm mt-0.5">{currentTrack.laps} Voltas</div>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2 relative z-20">
+                              <button
+                                type="button"
+                                onClick={() => switchHubTab('calendario')}
+                                className="w-full min-h-[44px] bg-[#191924] hover:bg-[#242434] text-white font-display font-black italic uppercase py-2.5 px-4 rounded-xl text-xs sm:text-sm tracking-wider transition-all border border-white/10 cursor-pointer flex items-center justify-center gap-2"
+                              >
+                                <Calendar className="w-4 h-4 text-[#e6ff55]" />
+                                <span>ESTRATÉGIA & PNEUS</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={startQualifying}
+                                className="w-full min-h-[46px] bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase py-2.5 px-4 rounded-xl text-xs sm:text-sm tracking-wider transition-all shadow-lg shadow-[#e6ff55]/20 cursor-pointer flex items-center justify-center gap-2"
+                              >
+                                <Play className="w-4 h-4 fill-current" />
+                                <span>DISPUTAR GP AGORA</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* BOTTOM SECTION: TELEMETRIA DO PILOTO NA HORIZONTAL (5 COLUNAS, SEM BOTÃO DE ABRIR CENTRO DE TREINAMENTO) */}
+                        <div className="bg-[#14141c] border border-white/5 rounded-2xl p-3.5 sm:p-4 flex flex-col gap-2.5 shadow-xl shrink-0">
+                          <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                            <div className="flex items-center gap-2.5 flex-wrap">
+                              <h4 className="text-xs sm:text-sm font-display font-black italic uppercase text-white">
+                                TELEMETRIA DO PILOTO
+                              </h4>
+                              <span className="text-[11px] font-mono text-[#8e8e9c] hidden sm:inline">
+                                · Toque em qualquer atributo para evoluir
+                              </span>
+                            </div>
+                            <span className="px-2.5 py-0.5 rounded-full bg-[#e6ff55]/15 text-[#e6ff55] font-mono text-xs font-bold border border-[#e6ff55]/30 shrink-0">
+                              {trainingPoints} XP Disponível
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                            {[
+                              { icon: Zap, key: 'speed' as const, val: driver.attributes.speed, label: 'Velocidade', bar: 'bg-[#38bdf8]', badge: 'bg-[#38bdf8]/20 text-[#38bdf8]' },
+                              { icon: Flame, key: 'overtaking' as const, val: driver.attributes.overtaking, label: 'Ultrapassagem', bar: 'bg-[#e6ff55]', badge: 'bg-[#e6ff55]/20 text-[#e6ff55]' },
+                              { icon: Shield, key: 'defense' as const, val: driver.attributes.defense, label: 'Defesa', bar: 'bg-emerald-400', badge: 'bg-emerald-500/20 text-emerald-400' },
+                              { icon: Activity, key: 'consistency' as const, val: driver.attributes.consistency, label: 'Controle & Chuva', bar: 'bg-[#ff5f8f]', badge: 'bg-[#ff5f8f]/20 text-[#ff5f8f]' },
+                              { icon: Target, key: 'starts' as const, val: driver.attributes.starts, label: 'Largada', bar: 'bg-purple-400', badge: 'bg-purple-500/20 text-purple-400' }
+                            ].map((attr) => {
+                              const Icon = attr.icon;
+                              const teamBonus = currentTeam.attributeBonuses?.[attr.key] || 0;
+                              return (
+                                <button
+                                  key={attr.key}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedTrainAttr(attr.key);
+                                    switchHubTab('treino');
+                                  }}
+                                  className="bg-[#070709] hover:bg-[#191924] border border-white/5 hover:border-[#e6ff55]/50 rounded-xl p-3 flex flex-col justify-between gap-2 transition-all cursor-pointer text-left relative z-20"
+                                >
+                                  <div className="flex items-center justify-between gap-2 w-full">
+                                    <div className={`w-7 h-7 rounded-lg ${attr.badge} flex items-center justify-center shrink-0`}>
+                                      <Icon className="w-3.5 h-3.5" />
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      {teamBonus > 0 && (
+                                        <span className="text-[9px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                                          +{teamBonus}
+                                        </span>
+                                      )}
+                                      <span className="text-xl font-display font-black italic text-[#e6ff55] tabular-nums leading-none">
+                                        {attr.val}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="w-full">
+                                    <span className="text-[11px] font-display font-black italic uppercase text-white truncate block">
+                                      {attr.label}
+                                    </span>
+                                    <div className="w-full h-1.5 bg-[#191924] rounded-full overflow-hidden mt-1.5">
+                                      <div className={`h-full ${attr.bar}`} style={{ width: `${attr.val}%` }} />
+                                    </div>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      /* SUB-PAGE 2: CHASSI, CAPACETE & AUTOSAVES DE TEMPORADA */
+                      <div className={`flex-1 min-h-0 grid gap-3 ${isWidescreenMode ? 'grid-cols-1 lg:grid-cols-12' : 'grid-cols-1'} overflow-hidden`}>
+                        {/* LEFT 6 COLS: CHASSI & CAPACETE */}
+                        <div className={`${isWidescreenMode ? 'lg:col-span-6' : ''} bg-[#14141c] border border-white/5 rounded-2xl p-4 flex flex-col justify-between gap-3 shadow-xl min-h-0`}>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <span className="text-[10px] font-mono uppercase text-[#8e8e9c] block">Escuderia Oficial & Bônus</span>
+                              <h4 className="text-lg sm:text-xl font-display font-black italic uppercase truncate" style={{ color: currentTeam.color }}>
+                                {currentTeam.name}
+                              </h4>
+                            </div>
+                            <span className="text-xs font-mono text-emerald-400 font-bold bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 shrink-0">
                               {currentTeam.bonusType}
                             </span>
                           </div>
-                        </div>
 
-                        <div className="flex items-center justify-center py-4 bg-black/40 rounded-2xl border border-white/5">
-                          <CategoryCarVector 
-                            category={driver.category} 
-                            teamColor={currentTeam.color} 
-                            helmetColor={driver.helmetColor} 
-                            className="w-full h-28" 
-                          />
-                        </div>
-
-                        {/* Helmet Customizer */}
-                        <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                          <div className="flex items-center gap-3">
-                            <HelmetVector 
-                              primaryColor={driver.helmetColor} 
-                              secondaryColor={driver.helmetSecondaryColor || '#1e3a8a'} 
-                              className="w-10 h-10 shrink-0" 
+                          <div className="flex-1 min-h-[100px] flex items-center justify-center p-4 bg-black/50 rounded-2xl border border-white/5">
+                            <CategoryCarVector 
+                              category={driver.category} 
+                              teamColor={currentTeam.color} 
+                              helmetColor={driver.helmetColor} 
+                              className="w-full h-24 sm:h-28" 
                             />
-                            <div>
-                              <span className="text-xs font-mono text-white block font-bold">Pintura do Capacete</span>
-                              <span className="text-[10px] font-mono text-[#8e8e9c]">Clique nas cores para personalizar</span>
+                          </div>
+
+                          {/* Helmet Customizer with Large Click Targets */}
+                          <div className="bg-[#070709] p-3.5 rounded-2xl border border-white/5 flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <HelmetVector 
+                                primaryColor={driver.helmetColor} 
+                                secondaryColor={driver.helmetSecondaryColor || '#1e3a8a'} 
+                                className="w-11 h-11 shrink-0" 
+                              />
+                              <div className="min-w-0">
+                                <span className="text-xs font-display font-black italic uppercase text-white block truncate">Pintura do Capacete</span>
+                                <span className="text-[11px] font-mono text-[#8e8e9c] block truncate">Toque nas cores ao lado para personalizar</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2.5 shrink-0 relative z-20">
+                              <label className="flex items-center gap-1.5 bg-[#14141c] px-2.5 py-1.5 rounded-xl border border-white/10 cursor-pointer hover:border-[#e6ff55]">
+                                <input 
+                                  type="color" 
+                                  value={driver.helmetColor}
+                                  onChange={(e) => updateActiveDriver(prev => ({ ...prev, helmetColor: e.target.value }))}
+                                  className="w-8 h-8 bg-transparent cursor-pointer rounded"
+                                  title="Cor Principal" 
+                                />
+                                <span className="text-[10px] font-mono text-slate-300 hidden sm:inline">Cor 1</span>
+                              </label>
+                              <label className="flex items-center gap-1.5 bg-[#14141c] px-2.5 py-1.5 rounded-xl border border-white/10 cursor-pointer hover:border-[#e6ff55]">
+                                <input 
+                                  type="color" 
+                                  value={driver.helmetSecondaryColor || '#1e3a8a'}
+                                  onChange={(e) => updateActiveDriver(prev => ({ ...prev, helmetSecondaryColor: e.target.value }))}
+                                  className="w-8 h-8 bg-transparent cursor-pointer rounded"
+                                  title="Cor Secundária" 
+                                />
+                                <span className="text-[10px] font-mono text-slate-300 hidden sm:inline">Cor 2</span>
+                              </label>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <input 
-                              type="color" 
-                              value={driver.helmetColor}
-                              onChange={(e) => updateActiveDriver(prev => ({ ...prev, helmetColor: e.target.value }))}
-                              className="w-8 h-8 bg-transparent cursor-pointer rounded"
-                              title="Cor Principal" 
-                            />
-                            <input 
-                              type="color" 
-                              value={driver.helmetSecondaryColor || '#1e3a8a'}
-                              onChange={(e) => updateActiveDriver(prev => ({ ...prev, helmetSecondaryColor: e.target.value }))}
-                              className="w-8 h-8 bg-transparent cursor-pointer rounded"
-                              title="Cor Secundária" 
-                            />
-                          </div>
                         </div>
-                      </div>
 
-                      {/* AUTOSAVES DE INÍCIO DE ANO CHECKPOINTS CARD */}
-                      <div className="bg-[#14141c] border border-white/5 rounded-3xl p-5 space-y-3 shadow-xl">
-                        <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
-                          <div className="flex items-center gap-2">
-                            <span className="p-1.5 rounded-xl bg-[#e6ff55]/20 text-[#e6ff55]">
-                              <Save className="w-4 h-4" />
-                            </span>
-                            <div>
-                              <h4 className="text-xs font-display font-black italic uppercase text-white tracking-wider">
-                                AUTOSAVES // INÍCIO DE ANO
-                              </h4>
-                              <span className="text-[10px] text-[#8e8e9c] font-mono">
-                                Checkpoint salvo a cada novo ano
+                        {/* RIGHT 6 COLS: SLOTS DE CARREIRA & AUTOSAVES DE TEMPORADA */}
+                        <div className={`${isWidescreenMode ? 'lg:col-span-6' : ''} bg-[#14141c] border border-white/5 rounded-2xl p-4 flex flex-col justify-between gap-3 shadow-xl min-h-0 overflow-hidden`}>
+                          <div className="flex items-center justify-between border-b border-white/5 pb-2 shrink-0">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="p-2 rounded-xl bg-[#e6ff55]/20 text-[#e6ff55] shrink-0">
+                                <Save className="w-4 h-4" />
                               </span>
+                              <div className="min-w-0">
+                                <h4 className="text-xs sm:text-sm font-display font-black italic uppercase text-white tracking-wider truncate">
+                                  SLOTS & AUTOSAVES DE TEMPORADA
+                                </h4>
+                                <span className="text-[11px] text-[#8e8e9c] font-mono block truncate">
+                                  Troque de piloto rapidamente ou consulte checkpoints anuais
+                                </span>
+                              </div>
                             </div>
+                            <span className="text-xs font-mono font-bold text-[#e6ff55] bg-[#e6ff55]/10 px-2.5 py-1 rounded-full border border-[#e6ff55]/20 shrink-0">
+                              SLOT 0{(selectedSlotIndex ?? 0) + 1} ATIVO
+                            </span>
                           </div>
-                          <span className="text-[10px] font-mono font-bold text-[#e6ff55] bg-[#e6ff55]/10 px-2.5 py-0.5 rounded-full border border-[#e6ff55]/20">
-                            {(driver.seasonAutosaves || []).length} {(driver.seasonAutosaves || []).length === 1 ? 'ANO' : 'ANOS'}
-                          </span>
-                        </div>
 
-                        <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                          {(driver.seasonAutosaves || []).length > 0 ? (
-                            [...(driver.seasonAutosaves || [])].reverse().map((as, idx) => {
-                              const tm = TEAMS.find(t => t.id === as.teamId) || TEAMS[0];
-                              const avg = calculateDriverAvg(as.attributes);
+                          {/* QUICK 4 SLOTS SELECTOR WITH LARGE HIT TARGETS */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 shrink-0 relative z-20">
+                            {slots.map((s, idx) => {
+                              const isCurrent = idx === selectedSlotIndex;
                               return (
-                                <div 
+                                <button
                                   key={idx}
-                                  className="bg-[#070709] border border-white/5 rounded-2xl p-3 flex items-center justify-between text-xs font-mono"
+                                  type="button"
+                                  onClick={() => {
+                                    if (isCurrent) return;
+                                    if (s) {
+                                      selectDriverSlot(idx);
+                                    } else {
+                                      handleSaveAndReturnToMenu();
+                                      setCreatingSlotId(idx);
+                                      setIsCreatingDriver(true);
+                                    }
+                                  }}
+                                  className={`min-h-[48px] p-2 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                                    isCurrent
+                                      ? 'bg-[#e6ff55]/15 border-[#e6ff55] text-white shadow-md'
+                                      : 'bg-[#070709] hover:bg-[#191924] border-white/10 hover:border-[#e6ff55]/50 text-slate-300'
+                                  }`}
                                 >
-                                  <div className="space-y-0.5 min-w-0">
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-display font-black italic text-[#e6ff55] text-sm">
-                                        Ano {as.season}
-                                      </span>
-                                      <span className="text-[9px] font-bold px-2 py-0.2 rounded-full bg-[#ff5f8f]/20 text-[#ff5f8f] uppercase">
-                                        {as.category.toUpperCase()}
-                                      </span>
-                                    </div>
-                                    <div className="text-[11px] font-bold truncate" style={{ color: tm.color }}>
-                                      {tm.name}
-                                    </div>
+                                  <div className="flex items-center justify-between w-full text-[9px] font-mono font-bold">
+                                    <span className={isCurrent ? 'text-[#e6ff55]' : 'text-[#8e8e9c]'}>SLOT 0{idx + 1}</span>
+                                    {s && <span className="uppercase text-[#ff5f8f]">{s.category}</span>}
                                   </div>
-
-                                  <div className="text-right space-y-0.5 shrink-0">
-                                    <div className="text-[11px] font-bold text-white">
-                                      {avg} OVR · ${as.money.toFixed(1)}M
-                                    </div>
-                                    <div className="text-[9px] text-[#8e8e9c]">
-                                      {new Date(as.savedAt).toLocaleDateString()}
-                                    </div>
+                                  <div className="text-[11px] font-display font-black italic uppercase truncate w-full mt-0.5">
+                                    {s ? s.name : '+ Novo Piloto'}
                                   </div>
-                                </div>
+                                </button>
                               );
-                            })
-                          ) : (
-                            <div className="text-xs text-[#8e8e9c] font-mono text-center py-3">
-                              Nenhum autosave de temporada registrado ainda.
-                            </div>
-                          )}
+                            })}
+                          </div>
+
+                          <div className="flex-1 min-h-0 space-y-1.5 overflow-y-auto pr-1">
+                            {(driver.seasonAutosaves || []).length > 0 ? (
+                              [...(driver.seasonAutosaves || [])].reverse().map((as, idx) => {
+                                const tm = TEAMS.find(t => t.id === as.teamId) || TEAMS[0];
+                                const avg = calculateDriverAvg(as.attributes);
+                                return (
+                                  <div 
+                                    key={idx}
+                                    className="bg-[#070709] border border-white/5 rounded-xl p-2.5 px-3 flex items-center justify-between text-xs font-mono"
+                                  >
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-display font-black italic text-[#e6ff55] text-xs sm:text-sm">
+                                          Temporada {as.season}
+                                        </span>
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#ff5f8f]/20 text-[#ff5f8f] uppercase">
+                                          {as.category.toUpperCase()}
+                                        </span>
+                                      </div>
+                                      <div className="text-[11px] font-bold truncate mt-0.5" style={{ color: tm.color }}>
+                                        {tm.name}
+                                      </div>
+                                    </div>
+
+                                    <div className="text-right shrink-0">
+                                      <div className="text-xs font-bold text-white">
+                                        {avg} OVR · ${as.money.toFixed(1)}M
+                                      </div>
+                                      <div className="text-[10px] text-[#8e8e9c]">
+                                        {new Date(as.savedAt).toLocaleDateString()}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <div className="text-xs text-[#8e8e9c] font-mono text-center py-4">
+                                Nenhum autosave de temporada registrado ainda.
+                              </div>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={handleSaveAndReturnToMenu}
+                            className="w-full min-h-[46px] bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase py-2.5 px-4 rounded-xl text-xs sm:text-sm transition-all cursor-pointer flex items-center justify-center gap-2 shrink-0 relative z-20 shadow-lg shadow-[#e6ff55]/20"
+                          >
+                            <Save className="w-4 h-4 shrink-0" />
+                            <span>SALVAR CARREIRA & ABRIR TELA DE SLOTS</span>
+                          </button>
                         </div>
                       </div>
-                    </div>
+                    )}
                   </motion.div>
                 )}
 
-                {/* TAB 2: TREINAMENTO (DESKTOP 2-COLUMN SPLIT: INTERACTIVE DIAL + FULL 5-ATTRIBUTE OVERVIEW) */}
+                {/* TAB 2: TREINAMENTO (5 ATRIBUTOS NA HORIZONTAL EM AJUSTES RÁPIDOS) */}
                 {activeTab === 'treino' && (
                   <motion.div 
                     key="treino"
@@ -2810,277 +2938,238 @@ export default function App() {
                     initial="enter"
                     animate="center"
                     exit="exit"
-                    className="space-y-5"
+                    className="flex-1 min-h-0 flex flex-col gap-2.5 overflow-hidden"
                   >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    {/* COMPACT TOP HEADER BAR */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 bg-[#14141c] border border-white/10 rounded-2xl px-4 py-2.5 shadow-lg shrink-0">
                       <div>
-                        <h3 className="text-2xl sm:text-3xl font-display font-black italic uppercase text-[#e6ff55] tracking-tight leading-none">
-                          SET A GOAL // CENTRO DE EVOLUÇÃO
+                        <h3 className="text-base sm:text-lg font-display font-black italic uppercase text-[#e6ff55] leading-none">
+                          CENTRO DE EVOLUÇÃO DO PILOTO
                         </h3>
-                        <p className="text-xs text-[#8e8e9c] font-mono mt-1">
-                          Distribua seus pontos de treino (XP) respeitando o teto regulamentar de média 90 da FIA.
+                        <p className="text-[11px] text-[#8e8e9c] font-mono mt-0.5">
+                          Distribua XP entre seus atributos respeitando o teto regulamentar de média 90 da FIA.
                         </p>
+                      </div>
+                      <div className="flex items-center gap-2 font-mono text-xs shrink-0">
+                        <span className="px-3 py-1 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold">
+                          XP Disponível: {trainingPoints} XP
+                        </span>
+                        <span className="px-3 py-1 rounded-xl bg-[#ff5f8f]/15 text-[#ff5f8f] border border-[#ff5f8f]/30 font-bold">
+                          Média FIA: {calculateDriverAvg(driver.attributes)} / 90
+                        </span>
                       </div>
                     </div>
 
-                    <div className={`grid gap-6 ${isWidescreenMode ? 'grid-cols-1 lg:grid-cols-12' : 'grid-cols-1'}`}>
-                      {/* LEFT COLUMN: INTERACTIVE BIG DIAL */}
-                      <div className={`${isWidescreenMode ? 'lg:col-span-6' : ''} space-y-4`}>
-                        {/* Attribute Segmented Switcher */}
-                        <div className="flex items-center justify-between gap-1 p-1 bg-[#14141c] rounded-2xl border border-white/5">
-                          {[
-                            { key: 'speed' as const, label: 'Velocidade' },
-                            { key: 'overtaking' as const, label: 'Ultrapassagem' },
-                            { key: 'defense' as const, label: 'Defesa' },
-                            { key: 'consistency' as const, label: 'Consistência' },
-                            { key: 'starts' as const, label: 'Largada' },
-                          ].map(tab => (
-                            <button
-                              key={tab.key}
-                              onClick={() => setSelectedTrainAttr(tab.key)}
-                              className={`flex-1 py-2.5 text-xs font-display font-black italic uppercase rounded-xl transition-all cursor-pointer ${
-                                selectedTrainAttr === tab.key
-                                  ? 'bg-[#e6ff55] text-black shadow-md'
-                                  : 'text-[#8e8e9c] hover:text-white'
-                              }`}
-                            >
-                              {tab.label}
-                            </button>
-                          ))}
-                        </div>
+                    {/* TOP FOCUS DIAL PANEL (COMPACT HORIZONTAL) */}
+                    {(() => {
+                      const attrKey = selectedTrainAttr;
+                      const val = driver.attributes[attrKey];
+                      const cost = getUpgradeCost(val);
+                      const currentSum = driver.attributes.speed + driver.attributes.overtaking + driver.attributes.defense + driver.attributes.consistency + driver.attributes.starts;
+                      const isCapReached = currentSum >= 450;
+                      const bonus = currentTeam.attributeBonuses?.[attrKey] || 0;
+                      const effectiveVal = Math.min(99, val + bonus);
 
-                        {/* Central Goal / Dial Card */}
-                        {(() => {
-                          const attrKey = selectedTrainAttr;
-                          const val = driver.attributes[attrKey];
+                      const attrLabels = {
+                        speed: 'VELOCIDADE EM RETAS',
+                        overtaking: 'ULTRAPASSAGEM (ATAQUE)',
+                        defense: 'DEFESA DE POSIÇÃO',
+                        consistency: 'CONTROLE & CHUVA',
+                        starts: 'LARGADA & REAÇÃO'
+                      };
+
+                      return (
+                        <div className="bg-[#14141c] border border-white/5 rounded-2xl p-3.5 sm:px-5 shadow-xl shrink-0 grid grid-cols-1 lg:grid-cols-12 gap-3 items-center relative z-20">
+                          {/* Attribute Selector Pills */}
+                          <div className="lg:col-span-4 space-y-1.5">
+                            <span className="text-[10px] font-mono uppercase tracking-wider text-[#8e8e9c] block">
+                              Foco Selecionado: <strong className="text-[#e6ff55]">{attrLabels[attrKey]}</strong>
+                            </span>
+                            <div className="grid grid-cols-5 gap-1 p-1 bg-[#070709] rounded-xl border border-white/5">
+                              {[
+                                { key: 'speed' as const, label: 'Vel.' },
+                                { key: 'overtaking' as const, label: 'Ultrap.' },
+                                { key: 'defense' as const, label: 'Defesa' },
+                                { key: 'consistency' as const, label: 'Chuva' },
+                                { key: 'starts' as const, label: 'Largada' },
+                              ].map(tab => (
+                                <button
+                                  key={tab.key}
+                                  type="button"
+                                  onClick={() => setSelectedTrainAttr(tab.key)}
+                                  className={`min-h-[36px] py-1.5 text-[11px] font-display font-black italic uppercase rounded-lg transition-all cursor-pointer truncate px-1 ${
+                                    selectedTrainAttr === tab.key
+                                      ? 'bg-[#e6ff55] text-black shadow-md'
+                                      : 'text-[#8e8e9c] hover:text-white hover:bg-white/5'
+                                  }`}
+                                >
+                                  {tab.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Center Dial Controls */}
+                          <div className="lg:col-span-4 flex items-center justify-center gap-4">
+                            <button
+                              type="button"
+                              onClick={() => downgradeAttribute(attrKey)}
+                              disabled={val <= 40}
+                              className="w-12 h-12 rounded-2xl bg-[#1e1e28] hover:bg-[#282836] disabled:opacity-30 disabled:cursor-not-allowed text-white flex items-center justify-center font-bold text-xl transition-all cursor-pointer border border-white/10 shadow-md"
+                              title="Reduzir atributo"
+                            >
+                              −
+                            </button>
+
+                            <div className="flex flex-col items-center min-w-[100px]">
+                              <span className="text-4xl sm:text-5xl font-display font-black italic text-[#e6ff55] tracking-tighter leading-none tabular-nums">
+                                {val}
+                              </span>
+                              <span className="text-[10px] font-mono text-[#8e8e9c] mt-1">
+                                Custo: <strong className="text-[#e6ff55]">{cost} XP</strong>
+                                {bonus > 0 ? ` · +${bonus} Eq. (${effectiveVal})` : ''}
+                              </span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => upgradeAttribute(attrKey)}
+                              disabled={trainingPoints < cost || val >= 99 || isCapReached}
+                              className="w-12 h-12 rounded-2xl bg-[#e6ff55] hover:brightness-110 disabled:opacity-30 disabled:cursor-not-allowed text-black flex items-center justify-center font-bold text-xl transition-all cursor-pointer shadow-lg shadow-[#e6ff55]/20"
+                              title={isCapReached ? "Teto FIA 90 atingido!" : "Evoluir atributo"}
+                            >
+                              +
+                            </button>
+                          </div>
+
+                          {/* Right Actions */}
+                          <div className="lg:col-span-4 flex flex-col sm:flex-row lg:flex-col gap-2">
+                            {(['speed', 'overtaking', 'defense', 'consistency', 'starts'] as const).some(
+                              k => driver.attributes[k] > (driver.lockedAttributes?.[k] ?? driver.attributes[k])
+                            ) && (
+                              <button
+                                type="button"
+                                onClick={resetPendingUpgrades}
+                                className="w-full min-h-[38px] py-2 px-3 bg-[#191924] hover:bg-[#252535] text-amber-400 font-mono text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-amber-400/30"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>Desfazer gastos desta etapa</span>
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => switchHubTab('calendario')}
+                              className="w-full min-h-[42px] bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase py-2.5 px-4 rounded-xl text-xs sm:text-sm tracking-wider transition-all shadow-lg shadow-[#e6ff55]/20 cursor-pointer block text-center"
+                            >
+                              CONFIRMAR & IR PARA ESTRATÉGIA
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* BOTTOM SECTION: AJUSTE RÁPIDO DOS 5 ATRIBUTOS NA HORIZONTAL (5 COLUNAS LADO A LADO) */}
+                    <div className="flex-1 min-h-0 bg-[#14141c] border border-white/5 rounded-2xl p-4 shadow-xl flex flex-col justify-between gap-3 overflow-y-auto lg:overflow-hidden">
+                      <div className="flex items-center justify-between border-b border-white/5 pb-2 shrink-0">
+                        <h4 className="text-xs sm:text-sm font-display font-black italic uppercase text-white">
+                          AJUSTE RÁPIDO DOS 5 ATRIBUTOS (HORIZONTAL)
+                        </h4>
+                        <span className="text-xs font-mono text-[#e6ff55] font-bold shrink-0">
+                          Soma Total: {driver.attributes.speed + driver.attributes.overtaking + driver.attributes.defense + driver.attributes.consistency + driver.attributes.starts} / 450
+                        </span>
+                      </div>
+
+                      <div className="flex-1 min-h-0 grid grid-cols-2 sm:grid-cols-5 gap-3">
+                        {([
+                          { icon: Zap, key: 'speed' as const, label: 'Velocidade em Retas', shortLabel: 'Velocidade', color: 'bg-[#38bdf8]', badge: 'bg-[#38bdf8]/20 text-[#38bdf8]' },
+                          { icon: Flame, key: 'overtaking' as const, label: 'Ultrapassagem', shortLabel: 'Ultrapassagem', color: 'bg-[#e6ff55]', badge: 'bg-[#e6ff55]/20 text-[#e6ff55]' },
+                          { icon: Shield, key: 'defense' as const, label: 'Defesa de Posição', shortLabel: 'Defesa', color: 'bg-emerald-400', badge: 'bg-emerald-500/20 text-emerald-400' },
+                          { icon: Activity, key: 'consistency' as const, label: 'Controle & Chuva', shortLabel: 'Controle & Chuva', color: 'bg-[#ff5f8f]', badge: 'bg-[#ff5f8f]/20 text-[#ff5f8f]' },
+                          { icon: Target, key: 'starts' as const, label: 'Largada & Reação', shortLabel: 'Largada', color: 'bg-purple-400', badge: 'bg-purple-500/20 text-purple-400' }
+                        ]).map(item => {
+                          const Icon = item.icon;
+                          const val = driver.attributes[item.key];
+                          const bonus = currentTeam.attributeBonuses?.[item.key] || 0;
                           const cost = getUpgradeCost(val);
                           const currentSum = driver.attributes.speed + driver.attributes.overtaking + driver.attributes.defense + driver.attributes.consistency + driver.attributes.starts;
                           const isCapReached = currentSum >= 450;
-                          const bonus = currentTeam.attributeBonuses?.[attrKey] || 0;
-                          const effectiveVal = Math.min(99, val + bonus);
-                          const currentAvg = calculateDriverAvg(driver.attributes);
-
-                          const attrLabels = {
-                            speed: 'VELOCIDADE PURA (RETAS)',
-                            overtaking: 'ULTRAPASSAGEM (ATAQUE)',
-                            defense: 'DEFESA DE POSIÇÃO',
-                            consistency: 'CONTROLE & CHUVA',
-                            starts: 'LARGADA & REAÇÃO'
-                          };
 
                           return (
-                            <div className="bg-[#14141c] border border-white/5 rounded-3xl p-6 text-center space-y-4 shadow-xl relative overflow-hidden">
-                              <div>
-                                <span className="text-xs font-mono uppercase tracking-widest text-[#8e8e9c] font-bold">
-                                  {attrLabels[attrKey]}
-                                </span>
-                                
-                                <div className="flex items-center justify-center gap-8 my-3">
-                                  <button
-                                    onClick={() => downgradeAttribute(attrKey)}
-                                    disabled={val <= 40}
-                                    className="w-12 h-12 rounded-full bg-[#1e1e28] hover:bg-[#282836] disabled:opacity-30 disabled:cursor-not-allowed text-white flex items-center justify-center font-bold text-xl transition-all cursor-pointer border border-white/5"
-                                    title="Reduzir para recuperar XP e liberar especialização"
-                                  >
-                                    ‹
-                                  </button>
-
-                                  <div className="flex flex-col items-center">
-                                    <span className="text-7xl sm:text-8xl font-display font-black italic text-[#e6ff55] tracking-tighter leading-none tabular-nums">
-                                      {val}
+                            <div 
+                              key={item.key}
+                              onClick={() => setSelectedTrainAttr(item.key)}
+                              className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${
+                                selectedTrainAttr === item.key
+                                  ? 'bg-[#1e1e2c] border-[#e6ff55] ring-1 ring-[#e6ff55]/40 shadow-lg'
+                                  : 'bg-[#070709] border-white/5 hover:border-white/15'
+                              }`}
+                            >
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <div className={`w-8 h-8 rounded-xl ${item.badge} flex items-center justify-center shrink-0`}>
+                                    <Icon className="w-4 h-4" />
+                                  </div>
+                                  {bonus > 0 ? (
+                                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg font-bold shrink-0">
+                                      +{bonus} Eq.
                                     </span>
-                                    {bonus > 0 && (
-                                      <span className="text-xs font-mono font-bold text-emerald-400 mt-1">
-                                        +{bonus} {currentTeam.shortName} = {effectiveVal} na pista
-                                      </span>
-                                    )}
-                                  </div>
+                                  ) : (
+                                    <span className="text-[10px] font-mono text-[#8e8e9c]">
+                                      {cost} XP
+                                    </span>
+                                  )}
+                                </div>
 
+                                <div>
+                                  <span className="text-xs font-display font-black italic uppercase text-white block leading-tight">
+                                    {item.shortLabel}
+                                  </span>
+                                  <span className="text-[10px] font-mono text-[#8e8e9c] block mt-0.5">
+                                    Custo próx.: {cost} XP
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="space-y-2">
+                                <div className="text-center">
+                                  <span className="text-3xl font-display font-black italic text-[#e6ff55] tabular-nums leading-none">
+                                    {val}
+                                  </span>
+                                </div>
+
+                                <div className="w-full h-2 bg-[#191924] rounded-full overflow-hidden">
+                                  <div className={`h-full ${item.color} transition-all duration-300`} style={{ width: `${val}%` }} />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 pt-1 relative z-20">
                                   <button
-                                    onClick={() => upgradeAttribute(attrKey)}
-                                    disabled={trainingPoints < cost || val >= 99 || isCapReached}
-                                    className="w-12 h-12 rounded-full bg-[#1e1e28] hover:bg-[#282836] disabled:opacity-30 disabled:cursor-not-allowed text-[#e6ff55] flex items-center justify-center font-bold text-xl transition-all cursor-pointer border border-white/5"
-                                    title={isCapReached ? "Teto FIA 90 atingido! Reduza outro atributo com ‹ para liberar espaço." : "Evoluir atributo"}
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); downgradeAttribute(item.key); }}
+                                    disabled={val <= 40}
+                                    className="min-h-[40px] rounded-xl bg-[#191924] hover:bg-[#282838] disabled:opacity-30 text-white font-mono font-bold text-lg flex items-center justify-center cursor-pointer border border-white/10"
                                   >
-                                    ›
+                                    −
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); upgradeAttribute(item.key); }}
+                                    disabled={trainingPoints < cost || val >= 99 || isCapReached}
+                                    className="min-h-[40px] rounded-xl bg-[#e6ff55] hover:brightness-110 disabled:opacity-30 text-black font-mono font-bold text-lg flex items-center justify-center cursor-pointer shadow-md"
+                                  >
+                                    +
                                   </button>
                                 </div>
-
-                                <div className="text-xs font-mono text-[#8e8e9c]">
-                                  Custo Próx. Nível: <strong className="text-white">{cost} XP</strong> · Limite Máx: 99
-                                </div>
                               </div>
-
-                              {/* Interactive Scale / Ruler Tick Marks */}
-                              <div className="pt-2 pb-1 relative">
-                                <div className="flex items-center justify-between text-[10px] font-mono text-[#8e8e9c] px-4">
-                                  <span>40</span>
-                                  <span>50</span>
-                                  <span>60</span>
-                                  <span>70</span>
-                                  <span>80</span>
-                                  <span>90</span>
-                                  <span>99</span>
-                                </div>
-                                <div className="flex items-end justify-between px-4 h-6 mt-1 border-b border-white/10 pb-1">
-                                  {Array.from({ length: 30 }).map((_, i) => {
-                                    const tickVal = 40 + i * 2;
-                                    const isNear = Math.abs(tickVal - val) <= 2;
-                                    return (
-                                      <div 
-                                        key={i} 
-                                        className={`w-0.5 rounded-full transition-all ${
-                                          isNear ? 'bg-[#e6ff55] h-5' : i % 5 === 0 ? 'bg-white/40 h-3.5' : 'bg-white/10 h-2'
-                                        }`}
-                                      />
-                                    );
-                                  })}
-                                </div>
-                              </div>
-
-                              {/* 2 Bottom KPI Cards */}
-                              <div className="grid grid-cols-2 gap-3 pt-2">
-                                <div className="bg-[#191924] p-3.5 rounded-2xl border border-white/5 text-left flex items-center gap-3">
-                                  <div className="w-9 h-9 rounded-xl bg-[#ff5f8f]/20 text-[#ff5f8f] flex items-center justify-center shrink-0">
-                                    <Target className="w-4 h-4" />
-                                  </div>
-                                  <div>
-                                    <div className="text-lg font-display font-black italic text-white leading-tight">
-                                      {trainingPoints} XP
-                                    </div>
-                                    <div className="text-[10px] font-mono text-[#8e8e9c]">XP Disponível</div>
-                                  </div>
-                                </div>
-
-                                <div className="bg-[#191924] p-3.5 rounded-2xl border border-white/5 text-left flex items-center gap-3">
-                                  <div className="w-9 h-9 rounded-xl bg-[#ff5f8f]/20 text-[#ff5f8f] flex items-center justify-center shrink-0">
-                                    <Shield className="w-4 h-4" />
-                                  </div>
-                                  <div>
-                                    <div className="text-lg font-display font-black italic text-white leading-tight">
-                                      {currentAvg} / 90
-                                    </div>
-                                    <div className="text-[10px] font-mono text-[#8e8e9c]">Média FIA (Teto)</div>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {(['speed', 'overtaking', 'defense', 'consistency', 'starts'] as const).some(
-                                k => driver.attributes[k] > (driver.lockedAttributes?.[k] ?? driver.attributes[k])
-                              ) && (
-                                <button
-                                  onClick={resetPendingUpgrades}
-                                  className="w-full py-2.5 bg-[#191924] hover:bg-[#252535] text-amber-400 font-mono text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 border border-white/5"
-                                >
-                                  <RotateCcw className="w-3.5 h-3.5" />
-                                  <span>Desfazer gastos desta etapa (Devolver XP)</span>
-                                </button>
-                              )}
-
-                              <button
-                                onClick={() => switchHubTab('calendario')}
-                                className="w-full bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase py-4 rounded-full text-base tracking-wider transition-all shadow-lg shadow-[#e6ff55]/20 cursor-pointer block text-center"
-                              >
-                                CONFIRMAR EVOLUÇÃO & IR PARA ESTRATÉGIA
-                              </button>
                             </div>
                           );
-                        })()}
-                      </div>
-
-                      {/* RIGHT COLUMN ON DESKTOP: ALL 5 ATTRIBUTES SIMULTANEOUS CONTROL TABLE */}
-                      <div className={`${isWidescreenMode ? 'lg:col-span-6' : ''} bg-[#14141c] border border-white/5 rounded-3xl p-6 space-y-4 shadow-xl flex flex-col justify-between`}>
-                        <div>
-                          <div className="flex items-center justify-between border-b border-white/5 pb-3 mb-4">
-                            <div>
-                              <h4 className="text-base font-display font-black italic uppercase text-white">
-                                PAINEL COMPLETO DE TELEMETRIA DO PILOTO
-                              </h4>
-                              <p className="text-xs text-[#8e8e9c] font-mono">
-                                Ajuste qualquer atributo diretamente ou clique para focar no dial
-                              </p>
-                            </div>
-                            <span className="text-xs font-mono text-[#e6ff55] font-bold">
-                              Soma: {driver.attributes.speed + driver.attributes.overtaking + driver.attributes.defense + driver.attributes.consistency + driver.attributes.starts} / 450
-                            </span>
-                          </div>
-
-                          <div className="space-y-3">
-                            {([
-                              { key: 'speed' as const, label: 'Velocidade Pura (Retas)', color: 'bg-[#38bdf8]' },
-                              { key: 'overtaking' as const, label: 'Ultrapassagem (Curvas)', color: 'bg-[#e6ff55]' },
-                              { key: 'defense' as const, label: 'Defesa de Posição', color: 'bg-emerald-400' },
-                              { key: 'consistency' as const, label: 'Controle & Chuva', color: 'bg-[#ff5f8f]' },
-                              { key: 'starts' as const, label: 'Largada & Reação', color: 'bg-purple-400' }
-                            ]).map(item => {
-                              const val = driver.attributes[item.key];
-                              const bonus = currentTeam.attributeBonuses?.[item.key] || 0;
-                              const cost = getUpgradeCost(val);
-                              const currentSum = driver.attributes.speed + driver.attributes.overtaking + driver.attributes.defense + driver.attributes.consistency + driver.attributes.starts;
-                              const isCapReached = currentSum >= 450;
-
-                              return (
-                                <div 
-                                  key={item.key}
-                                  onClick={() => setSelectedTrainAttr(item.key)}
-                                  className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
-                                    selectedTrainAttr === item.key
-                                      ? 'bg-[#1e1e2c] border-[#e6ff55]/60'
-                                      : 'bg-[#070709] border-white/5 hover:border-white/15'
-                                  }`}
-                                >
-                                  <div className="flex items-center justify-between mb-2">
-                                    <div>
-                                      <span className="text-xs font-display font-black italic uppercase text-white">
-                                        {item.label}
-                                      </span>
-                                      {bonus > 0 && (
-                                        <span className="ml-2 text-[10px] font-mono text-emerald-400 font-bold">
-                                          +{bonus} Equipe
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <button
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); downgradeAttribute(item.key); }}
-                                        disabled={val <= 40}
-                                        className="w-7 h-7 rounded-lg bg-[#191924] hover:bg-[#282838] disabled:opacity-30 text-white font-mono font-bold text-sm flex items-center justify-center cursor-pointer border border-white/10"
-                                      >
-                                        -
-                                      </button>
-                                      <span className="text-lg font-display font-black italic text-[#e6ff55] w-10 text-center tabular-nums">
-                                        {val}
-                                      </span>
-                                      <button
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); upgradeAttribute(item.key); }}
-                                        disabled={trainingPoints < cost || val >= 99 || isCapReached}
-                                        className="w-7 h-7 rounded-lg bg-[#e6ff55] hover:brightness-110 disabled:opacity-30 text-black font-mono font-bold text-sm flex items-center justify-center cursor-pointer"
-                                      >
-                                        +
-                                      </button>
-                                    </div>
-                                  </div>
-                                  <div className="w-full h-2 bg-[#191924] rounded-full overflow-hidden">
-                                    <div className={`h-full ${item.color} transition-all duration-300`} style={{ width: `${val}%` }} />
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        <div className="bg-[#070709] p-3.5 rounded-2xl border border-white/5 text-xs font-mono text-[#8e8e9c] flex items-center justify-between">
-                          <span>Bônus ativo da <strong className="text-white">{currentTeam.name}</strong>:</span>
-                          <span className="text-emerald-400 font-bold">{currentTeam.bonusType}</span>
-                        </div>
+                        })}
                       </div>
                     </div>
                   </motion.div>
                 )}
 
-                {/* TAB: METAS DE PATROCÍNIO & CONQUISTAS DE CARREIRA (MERGED WITH TOGGLE) */}
+                {/* TAB 4: METAS DE PATROCÍNIO & CONQUISTAS DE CARREIRA (ROLAGEM INTERNA SOMENTE NA LISTA, CARDS AMPLOS E COMPLETOS) */}
                 {activeTab === 'patrocinio' && (
                   <motion.div 
                     key="patrocinio"
@@ -3089,370 +3178,228 @@ export default function App() {
                     initial="enter"
                     animate="center"
                     exit="exit"
-                    className="space-y-5"
+                    className="flex-1 min-h-0 flex flex-col gap-3 overflow-hidden"
                   >
-                    {/* TOP TOGGLE SWITCH FOR METAS VS MILESTONES */}
-                    <div className="flex items-center justify-between gap-2 p-1.5 bg-[#14141c] rounded-2xl border border-white/10 shadow-lg">
-                      <button
-                        type="button"
-                        onClick={() => setGoalsViewMode('metas')}
-                        className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-display font-black italic uppercase transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                          goalsViewMode === 'metas'
-                            ? 'bg-[#e6ff55] text-black shadow-md'
-                            : 'text-[#8e8e9c] hover:text-white hover:bg-white/5'
-                        }`}
-                      >
-                        <Briefcase className="w-4 h-4" />
-                        <span>Metas Anuais da Temporada</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setGoalsViewMode('milestones')}
-                        className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-display font-black italic uppercase transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                          goalsViewMode === 'milestones'
-                            ? 'bg-[#e6ff55] text-black shadow-md'
-                            : 'text-[#8e8e9c] hover:text-white hover:bg-white/5'
-                        }`}
-                      >
-                        <Award className="w-4 h-4" />
-                        <span>Conquistas & Milestones</span>
-                        {claimableMilestonesCount > 0 && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#ff5f8f] text-white animate-pulse">
-                            +{claimableMilestonesCount}
-                          </span>
-                        )}
-                      </button>
+                    {/* TOP TOGGLE SWITCH + SUMMARY KPI BAR COMBINED (FIXO FORA DA ROLAGEM) */}
+                    <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2 bg-[#14141c] border border-white/10 rounded-2xl p-2 shadow-lg shrink-0 relative z-20">
+                      <div className="flex items-center gap-2 bg-[#070709] p-1 rounded-xl border border-white/5 flex-1">
+                        <button
+                          type="button"
+                          onClick={() => setGoalsViewMode('metas')}
+                          className={`flex-1 min-h-[42px] py-2 px-3 rounded-lg text-xs font-display font-black italic uppercase transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                            goalsViewMode === 'metas'
+                              ? 'bg-[#e6ff55] text-black shadow-md'
+                              : 'text-[#8e8e9c] hover:text-white hover:bg-white/5'
+                          }`}
+                        >
+                          <Briefcase className="w-4 h-4" />
+                          <span>Metas da Temporada ({currentSeason})</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setGoalsViewMode('milestones')}
+                          className={`flex-1 min-h-[42px] py-2 px-3 rounded-lg text-xs font-display font-black italic uppercase transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                            goalsViewMode === 'milestones'
+                              ? 'bg-[#e6ff55] text-black shadow-md'
+                              : 'text-[#8e8e9c] hover:text-white hover:bg-white/5'
+                          }`}
+                        >
+                          <Award className="w-4 h-4" />
+                          <span>Marcos de Carreira</span>
+                          {claimableMilestonesCount > 0 && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#ff5f8f] text-white animate-pulse">
+                              +{claimableMilestonesCount}
+                            </span>
+                          )}
+                        </button>
+                      </div>
+
+                      {goalsViewMode === 'metas' ? (
+                        <div className="grid grid-cols-3 gap-2 shrink-0">
+                          <div className="bg-[#191924] px-3 py-1.5 rounded-xl border border-white/5 text-center">
+                            <div className="text-[9px] text-[#8e8e9c] font-mono uppercase">Salário/GP</div>
+                            <div className="text-xs sm:text-sm font-display font-black italic text-[#38bdf8] tabular-nums">
+                              +${(() => {
+                                const goals = driver.seasonGoals && driver.seasonGoals.length === 6 ? driver.seasonGoals : getInitialSeasonGoals();
+                                return goals.reduce((acc, g) => acc + (g.perRaceRetainer || 0), 0).toFixed(2);
+                              })()}M
+                            </div>
+                          </div>
+                          <div className="bg-[#191924] px-3 py-1.5 rounded-xl border border-white/5 text-center">
+                            <div className="text-[9px] text-[#8e8e9c] font-mono uppercase">XP Final</div>
+                            <div className="text-xs sm:text-sm font-display font-black italic text-[#ff5f8f] tabular-nums">
+                              +{(() => {
+                                const goals = driver.seasonGoals && driver.seasonGoals.length === 6 ? driver.seasonGoals : getInitialSeasonGoals();
+                                return goals.reduce((acc, g) => acc + g.rewardXp, 0);
+                              })()} XP
+                            </div>
+                          </div>
+                          <div className="bg-[#191924] px-3 py-1.5 rounded-xl border border-white/5 text-center">
+                            <div className="text-[9px] text-[#8e8e9c] font-mono uppercase">Concluídas</div>
+                            <div className="text-xs sm:text-sm font-display font-black italic text-[#e6ff55] tabular-nums">
+                              {(() => {
+                                const goals = driver.seasonGoals && driver.seasonGoals.length === 6 ? driver.seasonGoals : getInitialSeasonGoals();
+                                return goals.filter(g => g.isCompleted || (g.currentProgress || 0) >= g.targetValue).length;
+                              })()}/6
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-3 gap-2 shrink-0">
+                          <div className="bg-[#191924] px-3 py-1.5 rounded-xl border border-white/5 text-center">
+                            <div className="text-[9px] text-[#8e8e9c] font-mono uppercase">Concluídas</div>
+                            <div className="text-xs sm:text-sm font-display font-black italic text-[#e6ff55] tabular-nums">
+                              {(driver.claimedMilestones || []).length} / {CAREER_MILESTONES.length}
+                            </div>
+                          </div>
+                          <div className="bg-[#191924] px-3 py-1.5 rounded-xl border border-white/5 text-center">
+                            <div className="text-[9px] text-[#8e8e9c] font-mono uppercase">Disponíveis</div>
+                            <div className="text-xs sm:text-sm font-display font-black italic text-[#ff5f8f] tabular-nums">
+                              {claimableMilestonesCount}
+                            </div>
+                          </div>
+                          <div className="bg-[#191924] px-3 py-1.5 rounded-xl border border-white/5 text-center">
+                            <div className="text-[9px] text-[#8e8e9c] font-mono uppercase">Bônus Ganho</div>
+                            <div className="text-xs sm:text-sm font-display font-black italic text-[#38bdf8] tabular-nums">
+                              ${CAREER_MILESTONES.filter(m => (driver.claimedMilestones || []).includes(m.id)).reduce((acc, m) => acc + m.rewardMoney, 0).toFixed(1)}M
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {goalsViewMode === 'metas' ? (
-                      /* METAS ANUAIS SECTION */
-                      <div className="space-y-4">
-                        <motion.div 
-                          initial={{ opacity: 0, y: 12 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.05 }}
-                          className="bg-[#14141c] border border-white/5 rounded-3xl p-5 shadow-xl"
-                        >
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="p-1 rounded-lg bg-[#e6ff55]/20 text-[#e6ff55]">
-                                  <Briefcase className="w-3.5 h-3.5" />
-                                </span>
-                                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#e6ff55]">
-                                  PATROCÍNIOS // METAS DE TEMPORADA
-                                </span>
-                              </div>
-                              <h3 className="text-xl sm:text-2xl font-display font-black italic uppercase text-white tracking-tight">
-                                METAS ANUAIS ({currentSeason})
-                              </h3>
-                              <p className="text-xs text-[#8e8e9c] max-w-2xl mt-0.5 leading-relaxed">
-                                6 metas de temporada (3 fáceis, 2 médias e 1 difícil). Cumpra-as até o fim do campeonato para desbloquear todos os pontos de treino (XP) e bônus em dinheiro!
-                              </p>
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-2 w-full sm:w-auto shrink-0">
-                              <div className="bg-[#191924] p-3 rounded-2xl border border-white/5 text-center min-w-[95px]">
-                                <div className="text-[9px] text-[#8e8e9c] font-mono uppercase">Salário/GP</div>
-                                <div className="text-base font-display font-black italic text-[#38bdf8] tabular-nums">
-                                  +${(() => {
-                                    const goals = driver.seasonGoals && driver.seasonGoals.length === 6 ? driver.seasonGoals : getInitialSeasonGoals();
-                                    return goals.reduce((acc, g) => acc + (g.perRaceRetainer || 0), 0).toFixed(2);
-                                  })()}M
-                                </div>
-                              </div>
-                              <div className="bg-[#191924] p-3 rounded-2xl border border-white/5 text-center min-w-[95px]">
-                                <div className="text-[9px] text-[#8e8e9c] font-mono uppercase">XP em Jogo</div>
-                                <div className="text-base font-display font-black italic text-[#ff5f8f] tabular-nums">
-                                  +{(() => {
-                                    const goals = driver.seasonGoals && driver.seasonGoals.length === 6 ? driver.seasonGoals : getInitialSeasonGoals();
-                                    return goals.reduce((acc, g) => acc + g.rewardXp, 0);
-                                  })()} XP
-                                </div>
-                              </div>
-                              <div className="bg-[#191924] p-3 rounded-2xl border border-white/5 text-center min-w-[95px]">
-                                <div className="text-[9px] text-[#8e8e9c] font-mono uppercase">Concluídas</div>
-                                <div className="text-base font-display font-black italic text-[#e6ff55] tabular-nums">
-                                  {(() => {
-                                    const goals = driver.seasonGoals && driver.seasonGoals.length === 6 ? driver.seasonGoals : getInitialSeasonGoals();
-                                    return goals.filter(g => g.isCompleted || (g.currentProgress || 0) >= g.targetValue).length;
-                                  })()}/6
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </motion.div>
-
+                      /* LISTA INTERNA ROLÁVEL DE METAS ANUAIS (CARDS ESPAÇADOS COM TEXTOS COMPLETOS) */
+                      <div className="flex-1 min-h-0 overflow-y-auto pr-1.5 pb-3 grid grid-cols-1 md:grid-cols-2 gap-4 content-start">
                         {(() => {
                           const allGoals = driver.seasonGoals && driver.seasonGoals.length === 6 ? driver.seasonGoals : getInitialSeasonGoals();
-                          const sections = [
-                            {
-                              difficulty: 'facil' as const,
-                              label: '3 METAS FÁCEIS',
-                              tagColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-                              badgeIcon: '🟢',
-                              xpNote: '+4 a +5 XP cada',
-                              gridCols: isWidescreenMode ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2',
-                              goals: allGoals.filter(g => g.difficulty === 'facil')
-                            },
-                            {
-                              difficulty: 'media' as const,
-                              label: '2 METAS MÉDIAS',
-                              tagColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-                              badgeIcon: '🟡',
-                              xpNote: '+9 XP cada',
-                              gridCols: 'grid-cols-1 sm:grid-cols-2',
-                              goals: allGoals.filter(g => g.difficulty === 'media')
-                            },
-                            {
-                              difficulty: 'dificil' as const,
-                              label: '1 META DIFÍCIL',
-                              tagColor: 'bg-[#ff5f8f]/20 text-[#ff5f8f] border-[#ff5f8f]/30',
-                              badgeIcon: '👑',
-                              xpNote: '+18 XP Máximo',
-                              gridCols: 'grid-cols-1',
-                              goals: allGoals.filter(g => g.difficulty === 'dificil')
-                            }
-                          ];
-
-                          return (
-                            <div className="space-y-4">
-                              {sections.map((sec, secIdx) => (
-                                <motion.div
-                                  key={sec.difficulty}
-                                  initial={{ opacity: 0, y: 15 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{ delay: 0.1 + secIdx * 0.08, duration: 0.35 }}
-                                  className="bg-[#14141c] border border-white/5 rounded-3xl p-5 space-y-3 shadow-xl"
-                                >
-                                  <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-sm">{sec.badgeIcon}</span>
-                                      <h4 className="text-xs font-display font-black italic uppercase text-white tracking-wider">
-                                        {sec.label}
-                                      </h4>
-                                      <span className={`text-[9px] px-2 py-0.5 rounded-full border font-mono font-bold uppercase ${sec.tagColor}`}>
-                                        {sec.xpNote}
-                                      </span>
-                                    </div>
-                                    <span className="text-[10px] text-[#8e8e9c] font-mono">
-                                      Validação ao fim do ano
-                                    </span>
-                                  </div>
-
-                                  <div className={`grid ${sec.gridCols} gap-4`}>
-                                    {sec.goals.map((goal, gIdx) => {
-                                      const currentVal = goal.currentProgress || 0;
-                                      const targetVal = goal.targetValue;
-                                      const isDone = goal.isCompleted || currentVal >= targetVal;
-                                      const progressPct = Math.min(100, Math.round((currentVal / targetVal) * 100));
-
-                                      return (
-                                        <motion.div
-                                          key={goal.id}
-                                          initial={{ opacity: 0, scale: 0.98 }}
-                                          animate={{ opacity: 1, scale: 1 }}
-                                          transition={{ delay: 0.15 + gIdx * 0.05 }}
-                                          className={`bg-[#191924] border-2 rounded-2xl p-4 flex flex-col justify-between shadow-lg relative overflow-hidden transition-all ${
-                                            isDone 
-                                              ? 'border-[#e6ff55] shadow-[#e6ff55]/10' 
-                                              : 'border-white/5 hover:border-white/10'
-                                          }`}
-                                        >
-                                          <div>
-                                            <div className="flex items-center justify-between mb-2">
-                                              <div className="flex items-center gap-2.5">
-                                                <span className="text-2xl p-1.5 bg-[#070709] rounded-xl border border-white/5">
-                                                  {goal.logo}
-                                                </span>
-                                                <div>
-                                                  <h5 className="font-display font-black italic uppercase text-white text-sm leading-tight">
-                                                    {goal.name}
-                                                  </h5>
-                                                  <span className="text-[10px] text-[#8e8e9c] uppercase font-mono">
-                                                    {goal.title}
-                                                  </span>
-                                                </div>
-                                              </div>
-                                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase border ${
-                                                isDone 
-                                                  ? 'bg-[#e6ff55]/20 text-[#e6ff55] border-[#e6ff55]/40 animate-pulse'
-                                                  : 'bg-[#191924] text-[#8e8e9c] border-white/5'
-                                              }`}>
-                                                {isDone ? '🏆 Concluída!' : 'Em Progresso'}
-                                              </span>
-                                            </div>
-
-                                            <p className="text-xs text-slate-300 leading-snug mb-3">
-                                              {goal.description}
-                                            </p>
-
-                                            <div className="space-y-1.5 mb-3 bg-[#070709] p-3 rounded-xl border border-white/5">
-                                              <div className="flex items-center justify-between text-xs font-mono">
-                                                <span className="text-[#8e8e9c] text-[11px]">Progresso na Temporada</span>
-                                                <span className="font-bold text-[#e6ff55]">
-                                                  {currentVal} / {targetVal}
-                                                </span>
-                                              </div>
-                                              <div className="w-full bg-[#1e1e28] h-2.5 rounded-full overflow-hidden">
-                                                <div 
-                                                  className={`h-full transition-all duration-500 ${isDone ? 'bg-[#e6ff55]' : 'bg-[#38bdf8]'}`}
-                                                  style={{ width: `${progressPct}%` }}
-                                                />
-                                              </div>
-                                              <div className="flex items-center justify-between text-[10px] font-mono text-[#8e8e9c]">
-                                                <span>Salário / GP: <strong className="text-white">+${goal.perRaceRetainer?.toFixed(2) || '0.10'}M</strong></span>
-                                                <span className={isDone ? 'text-[#e6ff55] font-bold' : ''}>
-                                                  {isDone ? '100% Batida!' : `${progressPct}%`}
-                                                </span>
-                                              </div>
-                                            </div>
-                                          </div>
-
-                                          <div className="pt-2.5 border-t border-white/5 flex items-center justify-between">
-                                            <div className="flex items-center gap-1.5 font-mono text-xs">
-                                              <span className="text-[#8e8e9c]">Prêmio Final:</span>
-                                              <span className="text-[#e6ff55] font-bold">+${goal.rewardMoney.toFixed(2)}M</span>
-                                              <span className="text-[#8e8e9c]">·</span>
-                                              <span className="text-[#ff5f8f] font-bold">+{goal.rewardXp} XP</span>
-                                            </div>
-                                            <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
-                                              isDone ? 'bg-[#e6ff55]/20 text-[#e6ff55]' : 'bg-[#191924] text-[#8e8e9c]'
-                                            }`}>
-                                              {isDone ? 'BÔNUS GARANTIDO' : 'EM DISPUTA'}
-                                            </span>
-                                          </div>
-                                        </motion.div>
-                                      );
-                                    })}
-                                  </div>
-                                </motion.div>
-                              ))}
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    ) : (
-                      /* MILESTONES & CONQUISTAS SECTION */
-                      <div className="space-y-5">
-                        <motion.div 
-                          initial={{ opacity: 0, y: 12 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.05 }}
-                          className="bg-[#14141c] border border-white/5 rounded-3xl p-5 shadow-xl relative overflow-hidden"
-                        >
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="p-1 rounded-lg bg-[#e6ff55]/20 text-[#e6ff55]">
-                                  <Award className="w-3.5 h-3.5" />
-                                </span>
-                                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#e6ff55]">
-                                  GALERIA DE HONRA // CONQUISTAS DE CARREIRA
-                                </span>
-                              </div>
-                              <h3 className="text-xl sm:text-2xl font-display font-black italic uppercase text-white tracking-tight">
-                                MILESTONES & MARCOS HISTÓRICOS
-                              </h3>
-                              <p className="text-xs text-[#8e8e9c] max-w-2xl mt-0.5 leading-relaxed">
-                                Complete objetivos lendários na sua trajetória (10 Pódios, 5 Poles, Campeonatos e mais) para desbloquear bônus únicos em dinheiro e XP de evolução.
-                              </p>
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-2 w-full sm:w-auto shrink-0">
-                              <div className="bg-[#191924] p-3 rounded-2xl border border-white/5 text-center min-w-[95px]">
-                                <div className="text-[9px] text-[#8e8e9c] font-mono uppercase">Desbloqueadas</div>
-                                <div className="text-base font-display font-black italic text-[#e6ff55] tabular-nums">
-                                  {(driver.claimedMilestones || []).length} / {CAREER_MILESTONES.length}
-                                </div>
-                              </div>
-                              <div className="bg-[#191924] p-3 rounded-2xl border border-white/5 text-center min-w-[95px]">
-                                <div className="text-[9px] text-[#8e8e9c] font-mono uppercase">Para Resgatar</div>
-                                <div className="text-base font-display font-black italic text-[#ff5f8f] tabular-nums">
-                                  {claimableMilestonesCount}
-                                </div>
-                              </div>
-                              <div className="bg-[#191924] p-3 rounded-2xl border border-white/5 text-center min-w-[95px]">
-                                <div className="text-[9px] text-[#8e8e9c] font-mono uppercase">Total Ganho</div>
-                                <div className="text-base font-display font-black italic text-[#38bdf8] tabular-nums">
-                                  ${CAREER_MILESTONES.filter(m => (driver.claimedMilestones || []).includes(m.id)).reduce((acc, m) => acc + m.rewardMoney, 0).toFixed(1)}M
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </motion.div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {CAREER_MILESTONES.map((m, idx) => {
-                            const currentVal = getMilestoneCurrentValue(m, driver);
-                            const isCompleted = currentVal >= m.targetValue;
-                            const isClaimed = (driver.claimedMilestones || []).includes(m.id);
-                            const canClaim = isCompleted && !isClaimed;
-                            const progressPct = Math.min(100, Math.round((currentVal / m.targetValue) * 100));
+                          return allGoals.map((goal, gIdx) => {
+                            const currentVal = goal.currentProgress || 0;
+                            const targetVal = goal.targetValue;
+                            const isDone = goal.isCompleted || currentVal >= targetVal;
+                            const progressPct = Math.min(100, Math.round((currentVal / targetVal) * 100));
+                            const diffMeta = goal.difficulty === 'facil'
+                              ? { label: '🟢 Fácil', cls: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' }
+                              : goal.difficulty === 'media'
+                              ? { label: '🟡 Média', cls: 'bg-amber-500/20 text-amber-300 border-amber-500/30' }
+                              : { label: '👑 Difícil', cls: 'bg-[#ff5f8f]/20 text-[#ff5f8f] border-[#ff5f8f]/30' };
 
                             return (
                               <motion.div
-                                key={m.id}
-                                initial={{ opacity: 0, y: 16 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: idx * 0.04 }}
-                                className={`p-4 sm:p-5 rounded-3xl border transition-all flex flex-col justify-between space-y-3 relative overflow-hidden ${
-                                  isClaimed
-                                    ? 'bg-[#0e0e14] border-emerald-500/20 opacity-85'
-                                    : canClaim
-                                    ? 'bg-[#1e1e2d] border-[#e6ff55] ring-2 ring-[#e6ff55]/30 shadow-lg shadow-[#e6ff55]/10'
-                                    : 'bg-[#14141c] border-white/5 hover:border-white/15'
+                                key={goal.id}
+                                initial={{ opacity: 0, scale: 0.98 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: gIdx * 0.03 }}
+                                className={`bg-[#14141c] border rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-3.5 shadow-lg relative ${
+                                  isDone 
+                                    ? 'border-[#e6ff55] shadow-[#e6ff55]/10' 
+                                    : 'border-white/10 hover:border-white/20'
                                 }`}
                               >
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="space-y-1 min-w-0">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      <span className={`text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded-full border ${
-                                        m.categoryTag === 'Vitórias & Pódios'
-                                          ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
-                                          : m.categoryTag === 'Evolução & Títulos'
-                                          ? 'bg-purple-500/10 text-purple-300 border-purple-500/30'
-                                          : 'bg-blue-500/10 text-blue-300 border-blue-500/30'
-                                      }`}>
-                                        {m.categoryTag}
+                                <div className="space-y-2.5">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      <span className="text-2xl p-2.5 bg-[#070709] rounded-xl border border-white/5 shrink-0">
+                                        {goal.logo}
                                       </span>
-                                      {isClaimed && (
-                                        <span className="text-[9px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
-                                          <Check className="w-3 h-3" /> RESGATADO
+                                      <div className="min-w-0">
+                                        <h5 className="font-display font-black italic uppercase text-white text-sm sm:text-base leading-snug">
+                                          {goal.name}
+                                        </h5>
+                                        <span className="text-xs text-[#e6ff55] uppercase font-mono font-bold block mt-0.5">
+                                          {goal.title}
                                         </span>
-                                      )}
-                                      {canClaim && (
-                                        <span className="text-[9px] font-mono font-bold text-[#e6ff55] bg-[#e6ff55]/20 px-2 py-0.5 rounded-full border border-[#e6ff55]/40 animate-pulse">
-                                          ✨ DISPONÍVEL!
-                                        </span>
-                                      )}
+                                      </div>
                                     </div>
-
-                                    <h4 className="text-base sm:text-lg font-display font-black italic uppercase text-white leading-snug">
-                                      {m.title}
-                                    </h4>
-                                    <p className="text-xs text-[#8e8e9c] leading-relaxed">
-                                      {m.description}
-                                    </p>
+                                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase border shrink-0 ${diffMeta.cls}`}>
+                                      {diffMeta.label}
+                                    </span>
                                   </div>
 
-                                  <div className="bg-[#070709] px-3 py-2 rounded-2xl border border-white/10 text-right shrink-0">
-                                    <div className="text-[9px] font-mono uppercase text-[#8e8e9c]">Recompensa</div>
-                                    <div className="text-xs font-display font-black italic text-[#e6ff55]">
-                                      +${m.rewardMoney.toFixed(1)}M
+                                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                                    {goal.description}
+                                  </p>
+
+                                  <div className="space-y-1.5 bg-[#070709] p-3 rounded-xl border border-white/5">
+                                    <div className="flex items-center justify-between text-xs font-mono">
+                                      <span className="text-[#8e8e9c]">Progresso na Temporada</span>
+                                      <span className="font-bold text-[#e6ff55]">
+                                        {currentVal} / {targetVal} ({progressPct}%)
+                                      </span>
                                     </div>
-                                    <div className="text-[10px] font-mono text-emerald-400 font-bold">
-                                      +{m.rewardXp} XP
+                                    <div className="w-full bg-[#1e1e28] h-2 rounded-full overflow-hidden">
+                                      <div 
+                                        className={`h-full transition-all duration-500 ${isDone ? 'bg-[#e6ff55]' : 'bg-[#38bdf8]'}`}
+                                        style={{ width: `${progressPct}%` }}
+                                      />
                                     </div>
                                   </div>
                                 </div>
 
-                                <div className="space-y-1.5 pt-1">
-                                  <div className="flex items-center justify-between text-[11px] font-mono text-[#8e8e9c]">
-                                    <span>Progresso: <strong className="text-white">{currentVal} / {m.targetValue}</strong></span>
-                                    <span className={isCompleted ? 'text-emerald-400 font-bold' : 'text-[#8e8e9c]'}>{progressPct}%</span>
+                                <div className="pt-3 border-t border-white/5 flex flex-wrap items-center justify-between gap-2 text-xs font-mono shrink-0">
+                                  <span className="text-[#8e8e9c]">
+                                    Fixo por GP: <strong className="text-[#38bdf8]">+${goal.perRaceRetainer?.toFixed(2) || '0.10'}M</strong>
+                                  </span>
+                                  <div className="flex items-center gap-2 bg-[#070709] px-3 py-1.5 rounded-xl border border-white/5">
+                                    <span className="text-[#e6ff55] font-bold">Bônus: +${goal.rewardMoney.toFixed(2)}M</span>
+                                    <span className="text-[#8e8e9c]">·</span>
+                                    <span className="text-[#ff5f8f] font-bold">+{goal.rewardXp} XP</span>
                                   </div>
-                                  <div className="w-full h-2 bg-[#070709] rounded-full overflow-hidden border border-white/5">
+                                </div>
+                              </motion.div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    ) : (
+                      /* LISTA INTERNA ROLÁVEL DE MARCOS DE CARREIRA (CARDS AMPLOS E TEXTOS COMPLETOS) */
+                      <div className="flex-1 min-h-0 overflow-y-auto pr-1.5 pb-3 grid grid-cols-1 md:grid-cols-2 gap-4 content-start">
+                        {CAREER_MILESTONES.map((m, idx) => {
+                          const currentVal = getMilestoneCurrentValue(m, driver);
+                          const isCompleted = currentVal >= m.targetValue;
+                          const isClaimed = (driver.claimedMilestones || []).includes(m.id);
+                          const canClaim = isCompleted && !isClaimed;
+                          const progressPct = Math.min(100, Math.round((currentVal / m.targetValue) * 100));
+
+                          return (
+                            <motion.div
+                              key={m.id}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: idx * 0.03 }}
+                              className={`p-4 sm:p-5 rounded-2xl border transition-all flex flex-col justify-between gap-3.5 relative ${
+                                isClaimed
+                                  ? 'bg-[#0e0e14] border-emerald-500/20 opacity-85'
+                                  : canClaim
+                                  ? 'bg-[#1e1e2d] border-[#e6ff55] ring-2 ring-[#e6ff55]/30 shadow-lg shadow-[#e6ff55]/10'
+                                  : 'bg-[#14141c] border-white/10 hover:border-white/20'
+                              }`}
+                            >
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between gap-2 flex-wrap">
+                                  <span className="text-[10px] font-mono font-bold uppercase px-2.5 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10">
+                                    {m.categoryTag}
+                                  </span>
+                                  <span className="text-xs sm:text-sm font-display font-black italic text-[#e6ff55] bg-[#070709] px-3 py-1 rounded-xl border border-white/5">
+                                    +${m.rewardMoney.toFixed(1)}M · +{m.rewardXp} XP
+                                  </span>
+                                </div>
+
+                                <h4 className="text-sm sm:text-base font-display font-black italic uppercase text-white leading-snug">
+                                  {m.title}
+                                </h4>
+                                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                                  {m.description}
+                                </p>
+                              </div>
+
+                              <div className="space-y-3 shrink-0 relative z-20">
+                                <div className="space-y-1.5 bg-[#070709] p-3 rounded-xl border border-white/5">
+                                  <div className="flex items-center justify-between text-xs font-mono text-[#8e8e9c]">
+                                    <span>Progresso: <strong className="text-white">{currentVal} / {m.targetValue}</strong></span>
+                                    <span className={isCompleted ? 'text-emerald-400 font-bold' : 'text-[#e6ff55] font-bold'}>{progressPct}%</span>
+                                  </div>
+                                  <div className="w-full h-2 bg-[#14141c] rounded-full overflow-hidden border border-white/5">
                                     <div
                                       className={`h-full transition-all duration-500 ${
                                         isClaimed ? 'bg-emerald-500' : isCompleted ? 'bg-[#e6ff55]' : 'bg-[#38bdf8]'
@@ -3462,37 +3409,36 @@ export default function App() {
                                   </div>
                                 </div>
 
-                                <div className="pt-2">
-                                  {canClaim ? (
-                                    <button
-                                      onClick={() => claimMilestoneReward(m.id)}
-                                      className="w-full bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase py-3 rounded-2xl text-xs tracking-wider transition-all shadow-lg shadow-[#e6ff55]/20 cursor-pointer flex items-center justify-center gap-2"
-                                    >
-                                      <Gift className="w-4 h-4 fill-current" />
-                                      <span>RESGATAR +${m.rewardMoney.toFixed(1)}M & +{m.rewardXp} XP</span>
-                                    </button>
-                                  ) : isClaimed ? (
-                                    <div className="w-full py-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-center text-xs font-mono font-bold text-emerald-400 flex items-center justify-center gap-1.5">
-                                      <Check className="w-4 h-4" />
-                                      <span>BÔNUS CONQUISTADO & ADICIONADO AO SALDO</span>
-                                    </div>
-                                  ) : (
-                                    <div className="w-full py-2.5 bg-[#070709] border border-white/5 rounded-2xl text-center text-xs font-mono text-[#8e8e9c] flex items-center justify-center gap-1.5">
-                                      <Lock className="w-3.5 h-3.5" />
-                                      <span>EM PROGRESSO ({currentVal}/{m.targetValue})</span>
-                                    </div>
-                                  )}
-                                </div>
-                              </motion.div>
-                            );
-                          })}
-                        </div>
+                                {canClaim ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => claimMilestoneReward(m.id)}
+                                    className="w-full min-h-[44px] bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase py-2.5 px-4 rounded-xl text-xs sm:text-sm tracking-wider transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
+                                  >
+                                    <Gift className="w-4 h-4 fill-current" />
+                                    <span>RESGATAR BÔNUS AGORA</span>
+                                  </button>
+                                ) : isClaimed ? (
+                                  <div className="w-full min-h-[42px] py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-center text-xs font-mono font-bold text-emerald-400 flex items-center justify-center gap-2">
+                                    <Check className="w-4 h-4" />
+                                    <span>CONQUISTA RESGATADA</span>
+                                  </div>
+                                ) : (
+                                  <div className="w-full min-h-[42px] py-2 bg-[#070709] border border-white/5 rounded-xl text-center text-xs font-mono text-[#8e8e9c] flex items-center justify-center gap-2">
+                                    <Lock className="w-4 h-4" />
+                                    <span>EM PROGRESSO</span>
+                                  </div>
+                                )}
+                              </div>
+                            </motion.div>
+                          );
+                        })}
                       </div>
                     )}
                   </motion.div>
                 )}
 
-                {/* TAB 3: CALENDARIO, ESCOLHA DE PNEU E TRAÇADO (DESKTOP 2-COLUMN SPLIT) */}
+                {/* TAB 3: CORRIDA & CALENDÁRIO (ROLAGEM NORMAL EM PREPARAÇÃO & BOTÃO DE INICIAR CORRIDA NO COMEÇO) */}
                 {activeTab === 'calendario' && (
                   <motion.div 
                     key="calendario"
@@ -3501,272 +3447,334 @@ export default function App() {
                     initial="enter"
                     animate="center"
                     exit="exit"
-                    className={`grid gap-6 ${isWidescreenMode ? 'grid-cols-1 lg:grid-cols-12' : 'grid-cols-1'}`}
+                    className="flex-1 min-h-0 flex flex-col gap-2.5 overflow-hidden"
                   >
-                    {/* LEFT 7 COLS: STRATEGY & TIRE SELECTION */}
-                    <div className={`${isWidescreenMode ? 'lg:col-span-7' : ''} bg-[#14141c] border border-white/5 rounded-3xl p-5 sm:p-6 space-y-4 shadow-xl`}>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] uppercase font-mono font-bold tracking-widest text-[#e6ff55]">
-                          ETAPA {currentRaceIndex + 1} DE {catTracks.length} · {driver.category.toUpperCase()}
-                        </span>
-                        {(() => {
-                          const wb = getWeatherBadge(currentTrack.weather);
-                          return (
-                            <div className="flex items-center gap-1.5">
-                              <span className={`text-[10px] px-2.5 py-0.5 rounded-full border font-mono font-bold flex items-center gap-1 ${wb.badgeClass}`}>
-                                <span>{wb.icon}</span>
-                                <span>{wb.label}</span>
-                              </span>
-                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#191924] text-[#8e8e9c] font-mono border border-white/5">
-                                {currentTrack.laps} Voltas
-                              </span>
-                            </div>
-                          );
-                        })()}
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center bg-[#070709] p-4 rounded-2xl border border-white/5">
-                        <div>
-                          <h3 className="text-xl sm:text-2xl font-display font-black italic uppercase text-white tracking-tight mb-0.5">
-                            {currentTrack.name}
-                          </h3>
-                          <p className="text-[#8e8e9c] text-xs mb-2 font-mono">{currentTrack.circuit} · {currentTrack.country}</p>
-                          <p className="text-xs text-slate-300 leading-relaxed mb-2.5">{currentTrack.characteristics}</p>
-
-                          {currentTrack.weather === 'Chuva' && (
-                            <div className="mb-3 p-2.5 rounded-xl bg-blue-950/50 border border-blue-400/30 text-[11px] text-blue-200 leading-snug flex items-center gap-2">
-                              <span className="text-base shrink-0">🌧️</span>
-                              <div>
-                                <strong className="text-blue-300">Pista Molhada!</strong> Aderência severamente reduzida. <strong>Controle & Consistência</strong> evita rodadas.
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="flex flex-wrap gap-2 text-[10px] font-mono text-[#8e8e9c]">
-                            <span>Retas: <strong className="text-[#38bdf8]">{Math.round(currentTrack.straightWeight * 100)}%</strong></span>
-                            <span>·</span>
-                            <span>Curvas: <strong className="text-[#ff5f8f]">{Math.round(currentTrack.cornerWeight * 100)}%</strong></span>
-                            <span>·</span>
-                            <span>Defesa: <strong className="text-[#e6ff55]">{Math.round(currentTrack.defenseWeight * 100)}%</strong></span>
-                          </div>
-                        </div>
-
-                        <div className="bg-[#14141c] border border-white/5 rounded-2xl p-3 flex flex-col items-center">
-                          <TrackMapVector svgPath={currentTrack.svgPath} accentColor={currentTeam.color} className="w-full h-28" />
-                          <span className="text-[10px] font-mono text-[#8e8e9c] uppercase mt-1">
-                            {currentTrack.profileType} · {currentTrack.laps} Voltas
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* DICA DA EQUIPE DE ENGENHARIA */}
-                      {(() => {
-                        const tireAdvice = getTeamTireAdvice(currentTrack);
-                        return (
-                          <div className="bg-[#191924] border border-white/5 rounded-2xl p-3.5 flex items-start gap-3">
-                            <div className="p-2 bg-[#e6ff55]/20 text-[#e6ff55] rounded-xl shrink-0 mt-0.5">
-                              <Headphones className="w-4 h-4" />
-                            </div>
-                            <div className="space-y-1 min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-[10px] font-display font-black italic uppercase text-[#e6ff55] tracking-wider flex items-center gap-1.5">
-                                  <Radio className="w-3 h-3 text-[#e6ff55] animate-pulse" />
-                                  RÁDIO DA EQUIPE // ENGENHEIRO CHEFE
-                                </span>
-                                <span className={`text-[9px] px-2 py-0.5 rounded-full border font-mono font-bold ${tireAdvice.badgeStyle}`}>
-                                  Recomendado: Pneu {tireAdvice.recommendedTire}
-                                </span>
-                              </div>
-                              <p className="text-xs text-slate-300 leading-relaxed font-sans">
-                                "{tireAdvice.reason}"
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {/* TIRE COMPOUND SELECTION BEFORE RACE */}
-                      {(() => {
-                        const tireDurability = getTireDurabilityDetails(currentTrack);
-                        const tireAdvice = getTeamTireAdvice(currentTrack);
-
-                        return (
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <label className="text-xs font-display font-black italic uppercase text-[#8e8e9c] tracking-wider">
-                                COMPOSTO DE PNEU PARA A LARGADA
-                              </label>
-                              <span className="text-[10px] text-[#e6ff55] font-mono">
-                                Engenharia: <strong>{tireAdvice.recommendedTire}</strong>
-                              </span>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                              {([
-                                {
-                                  id: 'Macio' as TireCompound,
-                                  badge: 'S',
-                                  color: 'border-red-500 text-red-400 bg-red-500/10',
-                                  title: 'Macio (Soft)',
-                                  info: tireDurability.Macio
-                                },
-                                {
-                                  id: 'Médio' as TireCompound,
-                                  badge: 'M',
-                                  color: 'border-[#e6ff55] text-[#e6ff55] bg-[#e6ff55]/10',
-                                  title: 'Médio (Medium)',
-                                  info: tireDurability.Médio
-                                },
-                                {
-                                  id: 'Duro' as TireCompound,
-                                  badge: 'H',
-                                  color: 'border-slate-200 text-white bg-slate-200/10',
-                                  title: 'Duro (Hard)',
-                                  info: tireDurability.Duro
-                                }
-                              ]).map(t => {
-                                const isSelected = startingTire === t.id;
-                                const isOpt = t.info.isOptimal;
-
-                                return (
-                                  <button
-                                    key={t.id}
-                                    type="button"
-                                    onClick={() => setStartingTire(t.id)}
-                                    className={`p-3 rounded-2xl border text-left transition-all cursor-pointer relative flex flex-col justify-between ${
-                                      isSelected
-                                        ? 'bg-[#1e1e2c] border-[#e6ff55] ring-2 ring-[#e6ff55]/30 shadow-lg'
-                                        : isOpt
-                                        ? 'bg-[#191924] border-[#e6ff55]/40 hover:bg-[#222230]'
-                                        : 'bg-[#191924] border-white/5 hover:bg-[#222230]'
-                                    }`}
-                                  >
-                                    <div>
-                                      <div className="flex items-center justify-between mb-1.5">
-                                        <div className="flex items-center gap-2">
-                                          <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-[10px] font-mono font-black ${t.color}`}>
-                                            {t.badge}
-                                          </span>
-                                          <span className="text-xs font-display font-black italic uppercase text-white">{t.title}</span>
-                                        </div>
-                                        {isOpt && (
-                                          <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-[#e6ff55]/20 text-[#e6ff55] border border-[#e6ff55]/40 font-mono font-bold">
-                                            ★ IDEAL
-                                          </span>
-                                        )}
-                                      </div>
-
-                                      <div className="bg-[#070709] px-2 py-1 rounded-xl border border-white/5 mb-1.5 flex items-center justify-between text-[10px] font-mono">
-                                        <span className="text-[#8e8e9c]">Duração:</span>
-                                        <span className={`font-bold ${isOpt ? 'text-[#e6ff55]' : 'text-slate-200'}`}>
-                                          ~{t.info.minLaps} a {t.info.maxLaps} voltas
-                                        </span>
-                                      </div>
-
-                                      <div className="text-[10px] text-slate-300 leading-tight mb-1">
-                                        {t.info.paceNote}
-                                      </div>
-                                    </div>
-
-                                    <div className="text-[9px] text-[#8e8e9c] font-mono mt-1 border-t border-white/5 pt-1">
-                                      {t.id === 'Macio' && 'Mais aderência e ritmo inicial'}
-                                      {t.id === 'Médio' && 'Equilíbrio ideal p/ 1 pit stop'}
-                                      {t.id === 'Duro' && 'Máxima resistência sem paradas'}
-                                    </div>
-                                  </button>
-                                );
-                              })}
-                            </div>
-
-                            <div className="bg-[#070709] border border-white/5 p-2.5 rounded-xl text-[10px] text-slate-300 flex items-center gap-2">
-                              <span className="text-[#e6ff55] font-bold shrink-0">Estratégia {startingTire}:</span>
-                              <span className="text-[#8e8e9c] text-[10px] leading-tight">
-                                {tireDurability[startingTire].idealReason}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-[10px] font-mono uppercase text-[#8e8e9c] mb-1 font-bold">Ritmo Inicial de Pilotagem</label>
-                          <select 
-                            value={drivingStyle} 
-                            onChange={(e) => setDrivingStyle(e.target.value as any)}
-                            className="w-full bg-[#070709] border border-white/10 rounded-2xl px-3 py-2.5 text-white text-xs font-mono"
-                          >
-                            <option value="conservador">Conservador (Poupa Pneus · Menos Risco na Chuva)</option>
-                            <option value="equilibrado">Equilibrado (Ritmo Normal)</option>
-                            <option value="agressivo">Agressivo (Ataque, +Desgaste, +Risco)</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-mono uppercase text-[#8e8e9c] mb-1 font-bold">Postura no Pit Stop Automático</label>
-                          <select 
-                            value={autoPitMode} 
-                            onChange={(e) => setAutoPitMode(e.target.value as any)}
-                            className="w-full bg-[#070709] border border-white/10 rounded-2xl px-3 py-2.5 text-white text-xs font-mono"
-                          >
-                            <option value="conservador">Conservador (3.0s Seguro · Sem Erro)</option>
-                            <option value="arriscado">Arriscado (1.8s Rápido · 25% Risco)</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <button 
-                        onClick={startQualifying}
-                        className="w-full bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase py-4 rounded-full text-base tracking-wider transition-all shadow-lg shadow-[#e6ff55]/20 flex items-center justify-center gap-2 cursor-pointer"
+                    {/* INTERNAL 2-IN-1 TOGGLE BAR */}
+                    <div className="flex items-center justify-between gap-2 bg-[#14141c] border border-white/10 rounded-2xl p-1.5 shadow-lg shrink-0 relative z-20">
+                      <button
+                        type="button"
+                        onClick={() => setCalendarViewMode('preparacao')}
+                        className={`flex-1 min-h-[40px] py-2 px-3 rounded-xl text-xs font-display font-black italic uppercase transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                          calendarViewMode === 'preparacao'
+                            ? 'bg-[#e6ff55] text-black shadow-md'
+                            : 'text-[#8e8e9c] hover:text-white hover:bg-white/5'
+                        }`}
                       >
-                        <Timer className="w-5 h-5" />
-                        <span>IR PARA A CLASSIFICAÇÃO ({currentTrack.laps} VOLTAS)</span>
+                        <Flame className="w-4 h-4" />
+                        <span>Preparação & Estratégia (Etapa {currentRaceIndex + 1})</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCalendarViewMode('etapas')}
+                        className={`flex-1 min-h-[40px] py-2 px-3 rounded-xl text-xs font-display font-black italic uppercase transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                          calendarViewMode === 'etapas'
+                            ? 'bg-[#e6ff55] text-black shadow-md'
+                            : 'text-[#8e8e9c] hover:text-white hover:bg-white/5'
+                        }`}
+                      >
+                        <Calendar className="w-4 h-4" />
+                        <span>Calendário Completo ({catTracks.length} Etapas)</span>
                       </button>
                     </div>
 
-                    {/* RIGHT 5 COLS: FULL SEASON CALENDAR LIST */}
-                    <div className={`${isWidescreenMode ? 'lg:col-span-5' : ''} bg-[#14141c] border border-white/5 rounded-3xl p-5 sm:p-6 shadow-xl flex flex-col`}>
-                      <h3 className="text-sm font-display font-black italic uppercase text-[#e6ff55] tracking-wider mb-3">
-                        CALENDÁRIO DA TEMPORADA ({catTracks.length} CORRIDAS)
-                      </h3>
-                      <div className="space-y-2 max-h-[560px] overflow-y-auto pr-1 flex-1">
-                        {catTracks.map((tr, idx) => {
-                          const trWb = getWeatherBadge(tr.weather);
-                          return (
-                            <div 
-                              key={tr.id}
-                              className={`p-3 rounded-2xl border flex items-center justify-between text-xs transition-all ${
-                                idx === currentRaceIndex 
-                                  ? 'bg-[#1e1e2c] border-[#e6ff55] text-white shadow-md' 
-                                  : idx < currentRaceIndex 
-                                  ? 'bg-[#070709]/60 border-white/5 text-[#8e8e9c] line-through' 
-                                  : 'bg-[#070709] border-white/5 text-slate-300'
-                              }`}
-                            >
-                              <div>
-                                <div className="flex items-center gap-1.5 font-display font-black italic uppercase">
-                                  <span>R{idx + 1} - {tr.name}</span>
-                                  <span className={`text-[9px] px-2 py-0.2 rounded-full border font-mono ${trWb.badgeClass}`}>
-                                    {trWb.icon} {trWb.label}
-                                  </span>
+                    {calendarViewMode === 'preparacao' ? (
+                      /* SUB-PAGE 1: PREPARAÇÃO & ESTRATÉGIA COM BOTÃO DE INICIAR CORRIDA NO COMEÇO E ROLAGEM NORMAL */
+                      <div className="flex-1 min-h-0 overflow-y-auto pr-1.5 pb-4 flex flex-col gap-3.5">
+                        {/* TOP CTA: BOTÃO DE INICIAR CORRIDA LOGO NO COMEÇO */}
+                        <div className="bg-[#14141c] border border-[#e6ff55]/40 rounded-2xl p-3.5 sm:p-4 shadow-xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0 relative z-20">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-[10px] font-mono font-bold uppercase px-2.5 py-0.5 rounded-full bg-[#e6ff55]/20 text-[#e6ff55] border border-[#e6ff55]/30">
+                                Etapa {currentRaceIndex + 1}/{catTracks.length} · {currentTrack.name}
+                              </span>
+                              <span className="text-xs font-mono text-[#8e8e9c]">
+                                Pneu: <strong className="text-white">{startingTire}</strong> · Ritmo: <strong className="text-white uppercase">{drivingStyle}</strong> · Pit: <strong className="text-white uppercase">{autoPitMode}</strong>
+                              </span>
+                            </div>
+                            <h4 className="text-sm sm:text-base font-display font-black italic uppercase text-white mt-1">
+                              TUDO PRONTO NO BOX PARA A LARGADA ({currentTrack.laps} VOLTAS)
+                            </h4>
+                          </div>
+
+                          <button 
+                            type="button"
+                            onClick={startQualifying}
+                            className="min-h-[52px] px-6 py-3 bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase rounded-2xl text-sm sm:text-base tracking-wider transition-all shadow-lg shadow-[#e6ff55]/25 flex items-center justify-center gap-2.5 cursor-pointer shrink-0"
+                          >
+                            <Play className="w-5 h-5 fill-current" />
+                            <span>INICIAR CORRIDA ({currentTrack.laps} VOLTAS)</span>
+                          </button>
+                        </div>
+
+                        <div className={`grid gap-3.5 ${isWidescreenMode ? 'grid-cols-1 lg:grid-cols-12' : 'grid-cols-1'}`}>
+                          {/* LEFT 5 COLS: TRACK OVERVIEW & ENGINEER TIP */}
+                          <div className={`${isWidescreenMode ? 'lg:col-span-5' : ''} bg-[#14141c] border border-white/5 rounded-2xl p-4 flex flex-col justify-between gap-3.5 shadow-xl`}>
+                            <div>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-[11px] uppercase font-mono font-bold text-[#e6ff55]">
+                                  ETAPA {currentRaceIndex + 1} DE {catTracks.length} · {driver.category.toUpperCase()}
+                                </span>
+                                {(() => {
+                                  const wb = getWeatherBadge(currentTrack.weather);
+                                  return (
+                                    <span className={`text-xs px-2.5 py-0.5 rounded-full border font-mono font-bold flex items-center gap-1 ${wb.badgeClass}`}>
+                                      <span>{wb.icon}</span>
+                                      <span>{wb.label}</span>
+                                    </span>
+                                  );
+                                })()}
+                              </div>
+                              <h3 className="text-xl sm:text-2xl font-display font-black italic uppercase text-white tracking-tight">
+                                {currentTrack.name}
+                              </h3>
+                              <p className="text-[#8e8e9c] text-xs font-mono">{currentTrack.circuit} · {currentTrack.country}</p>
+                            </div>
+
+                            <div className="min-h-[120px] bg-[#070709] border border-white/5 rounded-2xl p-4 flex flex-col items-center justify-center">
+                              <TrackMapVector svgPath={currentTrack.svgPath} accentColor={currentTeam.color} className="w-full h-28 sm:h-32" />
+                              <div className="flex flex-wrap justify-center gap-3 text-xs font-mono text-[#8e8e9c] mt-3">
+                                <span>Retas: <strong className="text-[#38bdf8]">{Math.round(currentTrack.straightWeight * 100)}%</strong></span>
+                                <span>·</span>
+                                <span>Curvas: <strong className="text-[#ff5f8f]">{Math.round(currentTrack.cornerWeight * 100)}%</strong></span>
+                                <span>·</span>
+                                <span>Voltas: <strong className="text-[#e6ff55]">{currentTrack.laps}v</strong></span>
+                              </div>
+                            </div>
+
+                            {(() => {
+                              const tireAdvice = getTeamTireAdvice(currentTrack);
+                              return (
+                                <div className="bg-[#191924] border border-white/5 rounded-2xl p-3.5 flex items-center gap-3 shrink-0">
+                                  <div className="p-2.5 bg-[#e6ff55]/20 text-[#e6ff55] rounded-xl shrink-0">
+                                    <Headphones className="w-4 h-4" />
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                                      <span className="text-[10px] font-display font-black italic uppercase text-[#e6ff55]">
+                                        ENGENHEIRO CHEFE
+                                      </span>
+                                      <span className={`text-[10px] px-2 py-0.5 rounded-full border font-mono font-bold ${tireAdvice.badgeStyle}`}>
+                                        Ideal: Pneu {tireAdvice.recommendedTire}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-slate-300 leading-relaxed">
+                                      "{tireAdvice.reason}"
+                                    </p>
+                                  </div>
                                 </div>
-                                <div className="text-[10px] text-[#8e8e9c] font-mono mt-0.5">
-                                  {tr.laps} voltas · {tr.profileType}
+                              );
+                            })()}
+                          </div>
+
+                          {/* RIGHT 7 COLS: LARGE TIRE BUTTONS + PACE & PIT TOGGLES */}
+                          <div className={`${isWidescreenMode ? 'lg:col-span-7' : ''} bg-[#14141c] border border-white/5 rounded-2xl p-4 flex flex-col justify-between gap-4 shadow-xl relative z-20`}>
+                            {/* 1. TIRE COMPOUND SELECTION */}
+                            {(() => {
+                              const tireDurability = getTireDurabilityDetails(currentTrack);
+                              return (
+                                <div className="space-y-2.5">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs font-display font-black italic uppercase text-white tracking-wider">
+                                      1. ESCOLHA O COMPOSTO DE PNEU PARA A LARGADA
+                                    </span>
+                                    <span className="text-[11px] font-mono text-[#8e8e9c]">Pit Stop auto &lt; 27%</span>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    {([
+                                      {
+                                        id: 'Macio' as TireCompound,
+                                        badge: 'S',
+                                        color: 'border-red-500 text-red-400 bg-red-500/10',
+                                        title: 'Macio',
+                                        info: tireDurability.Macio
+                                      },
+                                      {
+                                        id: 'Médio' as TireCompound,
+                                        badge: 'M',
+                                        color: 'border-[#e6ff55] text-[#e6ff55] bg-[#e6ff55]/10',
+                                        title: 'Médio',
+                                        info: tireDurability.Médio
+                                      },
+                                      {
+                                        id: 'Duro' as TireCompound,
+                                        badge: 'H',
+                                        color: 'border-slate-200 text-white bg-slate-200/10',
+                                        title: 'Duro',
+                                        info: tireDurability.Duro
+                                      }
+                                    ]).map(t => {
+                                      const isSelected = startingTire === t.id;
+                                      const isOpt = t.info.isOptimal;
+
+                                      return (
+                                        <button
+                                          key={t.id}
+                                          type="button"
+                                          onClick={() => setStartingTire(t.id)}
+                                          className={`min-h-[96px] p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                                            isSelected
+                                              ? 'bg-[#1e1e2c] border-[#e6ff55] ring-2 ring-[#e6ff55]/40 shadow-lg'
+                                              : isOpt
+                                              ? 'bg-[#191924] border-[#e6ff55]/40 hover:bg-[#222230]'
+                                              : 'bg-[#191924] border-white/10 hover:bg-[#222230]'
+                                          }`}
+                                        >
+                                          <div className="flex items-center justify-between gap-1">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                              <span className={`w-6 h-6 rounded-full border flex items-center justify-center text-xs font-mono font-black shrink-0 ${t.color}`}>
+                                                {t.badge}
+                                              </span>
+                                              <span className="text-sm font-display font-black italic uppercase text-white">{t.title}</span>
+                                            </div>
+                                            {isOpt && (
+                                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#e6ff55]/20 text-[#e6ff55] border border-[#e6ff55]/40 font-mono font-bold shrink-0">
+                                                ★ IDEAL
+                                              </span>
+                                            )}
+                                          </div>
+
+                                          <div className="text-xs font-mono text-slate-200 font-bold mt-2">
+                                            Dura ~{t.info.minLaps} a {t.info.maxLaps} voltas
+                                          </div>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            {/* 2. DRIVING PACE & PIT MODE LARGE BUTTON TOGGLES */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div className="bg-[#070709] p-3.5 rounded-2xl border border-white/5 space-y-2.5">
+                                <span className="block text-[11px] font-display font-black italic uppercase text-slate-300">
+                                  2. RITMO INICIAL DE PILOTAGEM
+                                </span>
+                                <div className="grid grid-cols-3 gap-2">
+                                  {([
+                                    { id: 'conservador', label: 'Poupar' },
+                                    { id: 'equilibrado', label: 'Normal' },
+                                    { id: 'agressivo', label: 'Ataque' }
+                                  ] as const).map(st => (
+                                    <button
+                                      key={st.id}
+                                      type="button"
+                                      onClick={() => setDrivingStyle(st.id)}
+                                      className={`min-h-[42px] py-2 rounded-xl text-xs font-display font-black italic uppercase cursor-pointer border transition-all ${
+                                        drivingStyle === st.id
+                                          ? 'bg-[#e6ff55] text-black border-[#e6ff55] shadow-md'
+                                          : 'bg-[#191924] border-white/10 text-[#8e8e9c] hover:text-white'
+                                      }`}
+                                    >
+                                      {st.label}
+                                    </button>
+                                  ))}
                                 </div>
                               </div>
-                              {idx === currentRaceIndex && (
-                                <span className="text-[10px] text-[#e6ff55] font-display font-black italic uppercase px-2 py-0.5 rounded-full bg-[#e6ff55]/20 border border-[#e6ff55]/30">
-                                  ATUAL
+
+                              <div className="bg-[#070709] p-3.5 rounded-2xl border border-white/5 space-y-2.5">
+                                <span className="block text-[11px] font-display font-black italic uppercase text-slate-300">
+                                  3. POSTURA NO PIT STOP
                                 </span>
-                              )}
+                                <div className="grid grid-cols-2 gap-2">
+                                  {([
+                                    { id: 'conservador', label: 'Seguro (3.0s)' },
+                                    { id: 'arriscado', label: 'Rápido (1.8s)' }
+                                  ] as const).map(pm => (
+                                    <button
+                                      key={pm.id}
+                                      type="button"
+                                      onClick={() => setAutoPitMode(pm.id)}
+                                      className={`min-h-[42px] py-2 rounded-xl text-xs font-display font-black italic uppercase cursor-pointer border transition-all ${
+                                        autoPitMode === pm.id
+                                          ? 'bg-[#e6ff55] text-black border-[#e6ff55] shadow-md'
+                                          : 'bg-[#191924] border-white/10 text-[#8e8e9c] hover:text-white'
+                                      }`}
+                                    >
+                                      {pm.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
                             </div>
-                          );
-                        })}
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      /* SUB-PAGE 2: CALENDÁRIO COMPLETO DAS 10 ETAPAS (5x2 SPACIOUS GRID) */
+                      <div className="flex-1 min-h-0 bg-[#14141c] border border-white/5 rounded-2xl p-4 shadow-xl flex flex-col justify-between gap-3 overflow-hidden">
+                        <div className="flex items-center justify-between border-b border-white/5 pb-2 shrink-0">
+                          <div>
+                            <h3 className="text-sm sm:text-base font-display font-black italic uppercase text-[#e6ff55]">
+                              CALENDÁRIO OFICIAL DA TEMPORADA ({catTracks.length} ETAPAS)
+                            </h3>
+                            <p className="text-xs font-mono text-[#8e8e9c]">
+                              Apenas os 3 primeiros do campeonato ao final das {catTracks.length} etapas sobem de categoria.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setCalendarViewMode('preparacao')}
+                            className="min-h-[38px] px-3.5 py-1.5 bg-[#e6ff55] text-black font-display font-black italic uppercase text-xs rounded-xl cursor-pointer shrink-0"
+                          >
+                            Voltar p/ Estratégia
+                          </button>
+                        </div>
+
+                        <div className="flex-1 min-h-0 grid grid-cols-2 lg:grid-cols-5 gap-2.5 overflow-y-auto lg:overflow-hidden">
+                          {catTracks.map((tr, idx) => {
+                            const trWb = getWeatherBadge(tr.weather);
+                            const isCurrent = idx === currentRaceIndex;
+                            const isPast = idx < currentRaceIndex;
+                            return (
+                              <div 
+                                key={tr.id}
+                                className={`p-3 rounded-2xl border flex flex-col justify-between transition-all ${
+                                  isCurrent 
+                                    ? 'bg-[#1e1e2c] border-[#e6ff55] ring-2 ring-[#e6ff55]/30 text-white shadow-lg' 
+                                    : isPast 
+                                    ? 'bg-[#070709]/60 border-white/5 text-[#8e8e9c] opacity-70' 
+                                    : 'bg-[#070709] border-white/5 text-slate-200'
+                                }`}
+                              >
+                                <div>
+                                  <div className="flex items-center justify-between gap-1 mb-1">
+                                    <span className="text-[10px] font-mono font-bold text-[#e6ff55]">
+                                      ETAPA {idx + 1}
+                                    </span>
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full border font-mono shrink-0 ${trWb.badgeClass}`}>
+                                      {trWb.icon} {trWb.label}
+                                    </span>
+                                  </div>
+                                  <h4 className="font-display font-black italic uppercase text-sm text-white truncate">
+                                    {tr.name}
+                                  </h4>
+                                  <p className="text-[11px] font-mono text-[#8e8e9c] truncate">{tr.circuit}</p>
+                                </div>
+
+                                <div className="flex items-center justify-between text-[11px] font-mono pt-2 border-t border-white/5 mt-2">
+                                  <span className="text-slate-300 font-bold">{tr.laps} Voltas</span>
+                                  {isCurrent ? (
+                                    <span className="text-[10px] text-black font-display font-black italic uppercase px-2 py-0.5 rounded-full bg-[#e6ff55]">
+                                      ATUAL
+                                    </span>
+                                  ) : isPast ? (
+                                    <span className="text-[10px] text-emerald-400 font-mono">✓ CONCLUÍDA</span>
+                                  ) : (
+                                    <span className="text-[10px] text-[#8e8e9c]">FUTURA</span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </motion.div>
                 )}
 
-                {/* TAB: CLASSIFICACAO & HISTORICO DE CARREIRA (MERGED WITH TOGGLE) */}
+                {/* TAB 5: CLASSIFICAÇÃO (3-WAY TOGGLE: PILOTOS / CONSTRUTORES / HISTÓRICO) */}
                 {activeTab === 'classificacao' && (
                   <motion.div 
                     key="classificacao"
@@ -3775,170 +3783,194 @@ export default function App() {
                     initial="enter"
                     animate="center"
                     exit="exit"
-                    className="space-y-5"
+                    className="flex-1 min-h-0 flex flex-col gap-2.5 overflow-hidden"
                   >
-                    {/* TOP TOGGLE SWITCH FOR CLASSIFICACAO VS HISTORICO */}
-                    <div className="flex items-center justify-between gap-2 p-1.5 bg-[#14141c] rounded-2xl border border-white/10 shadow-lg">
+                    {/* TOP 3-WAY TOGGLE SWITCH */}
+                    <div className="flex items-center justify-between gap-2 p-1.5 bg-[#14141c] rounded-2xl border border-white/10 shadow-lg shrink-0 relative z-20">
                       <button
                         type="button"
-                        onClick={() => setChampionshipViewMode('classificacao')}
-                        className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-display font-black italic uppercase transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                          championshipViewMode === 'classificacao'
+                        onClick={() => setChampionshipViewMode('pilotos')}
+                        className={`flex-1 min-h-[40px] py-2 px-3 rounded-xl text-xs font-display font-black italic uppercase transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                          championshipViewMode === 'pilotos'
                             ? 'bg-[#e6ff55] text-black shadow-md'
                             : 'text-[#8e8e9c] hover:text-white hover:bg-white/5'
                         }`}
                       >
                         <Trophy className="w-4 h-4" />
-                        <span>Classificação do Campeonato</span>
+                        <span>Pilotos (20)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setChampionshipViewMode('construtores')}
+                        className={`flex-1 min-h-[40px] py-2 px-3 rounded-xl text-xs font-display font-black italic uppercase transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                          championshipViewMode === 'construtores'
+                            ? 'bg-[#e6ff55] text-black shadow-md'
+                            : 'text-[#8e8e9c] hover:text-white hover:bg-white/5'
+                        }`}
+                      >
+                        <Award className="w-4 h-4" />
+                        <span>Construtores (10)</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setChampionshipViewMode('historico')}
-                        className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-display font-black italic uppercase transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                        className={`flex-1 min-h-[40px] py-2 px-3 rounded-xl text-xs font-display font-black italic uppercase transition-all cursor-pointer flex items-center justify-center gap-2 ${
                           championshipViewMode === 'historico'
                             ? 'bg-[#e6ff55] text-black shadow-md'
                             : 'text-[#8e8e9c] hover:text-white hover:bg-white/5'
                         }`}
                       >
                         <History className="w-4 h-4" />
-                        <span>Histórico de Temporadas</span>
+                        <span>Histórico de Carreira</span>
                       </button>
                     </div>
 
-                    {championshipViewMode === 'classificacao' ? (
-                      /* STANDINGS SECTION (PILOTOS + CONSTRUTORES) */
-                      <div className={`grid gap-6 ${isWidescreenMode ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
-                        <div className="bg-[#14141c] border border-white/5 rounded-3xl p-5 sm:p-6 shadow-xl flex flex-col">
-                          <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-base font-display font-black italic uppercase text-white tracking-wider flex items-center gap-2">
-                              <Trophy className="w-4 h-4 text-[#e6ff55]" />
-                              CAMPEONATO DE PILOTOS ({driver.category.toUpperCase()})
-                            </h3>
-                            <span className="text-[10px] font-mono text-[#e6ff55] font-bold">Top 3 Sobe de Categoria</span>
-                          </div>
-                          <div className="space-y-1.5 max-h-[520px] overflow-y-auto pr-1 font-mono text-xs">
-                            {sortedSeasonStandings.map((ds, idx) => {
-                              const isTop3 = idx < 3;
-                              const isPlayer = ds.driverName === driver.name;
-                              return (
-                                <motion.div 
-                                  key={ds.driverName} 
-                                  initial={{ opacity: 0, x: -12 }}
-                                  animate={{ opacity: 1, x: 0 }}
-                                  transition={{ duration: 0.25, delay: idx * 0.02 }}
-                                  className={`p-3 rounded-2xl border flex items-center justify-between transition-all ${
-                                    isPlayer 
-                                      ? 'bg-[#1e1e2c] border-[#e6ff55] text-white font-bold shadow-md' 
-                                      : isTop3 
-                                      ? 'bg-[#191924] border-[#ff5f8f]/30 text-white' 
-                                      : 'bg-[#070709] border-white/5 text-[#8e8e9c]'
-                                  }`}
-                                >
-                                  <div className="flex items-center gap-2.5">
-                                    <span className={`w-6 font-bold tabular-nums ${isTop3 ? 'text-[#e6ff55]' : 'text-[#8e8e9c]'}`}>#{idx + 1}</span>
-                                    <span className={isPlayer ? 'text-[#e6ff55]' : 'text-white'}>{ds.driverName}</span>
-                                    {isTop3 && <span className="text-[9px] text-[#ff5f8f] uppercase hidden sm:inline font-bold">Promoção</span>}
-                                  </div>
-                                  <span className="text-[#e6ff55] font-bold tabular-nums">{ds.points} pts ({ds.wins}V)</span>
-                                </motion.div>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        <div className="bg-[#14141c] border border-white/5 rounded-3xl p-5 sm:p-6 shadow-xl flex flex-col">
-                          <h3 className="text-base font-display font-black italic uppercase text-white tracking-wider mb-3 flex items-center gap-2">
-                            <Award className="w-4 h-4 text-[#38bdf8]" />
-                            CAMPEONATO DE CONSTRUTORES
+                    {championshipViewMode === 'pilotos' ? (
+                      /* SUB-PAGE 1: 20 PILOTOS EM GRADE 4x5 LARGURA TOTAL SEM ROLAGEM */
+                      <div className="flex-1 min-h-0 bg-[#14141c] border border-white/5 rounded-2xl p-4 shadow-xl flex flex-col justify-between gap-2.5 overflow-hidden">
+                        <div className="flex items-center justify-between shrink-0">
+                          <h3 className="text-sm sm:text-base font-display font-black italic uppercase text-white tracking-wider flex items-center gap-2">
+                            <Trophy className="w-4 h-4 text-[#e6ff55]" />
+                            MUNDIAL DE PILOTOS ({driver.category.toUpperCase()} · TEMPORADA {currentSeason})
                           </h3>
-                          <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1 font-mono text-xs">
-                            {[...constructorStandings].sort((a, b) => b.points - a.points).map((cs, idx) => {
-                              const t = TEAMS.find(x => x.id === cs.teamId)!;
-                              return (
-                                <motion.div 
-                                  key={cs.teamId} 
-                                  initial={{ opacity: 0, x: -12 }}
-                                  animate={{ opacity: 1, x: 0 }}
-                                  transition={{ duration: 0.25, delay: idx * 0.02 }}
-                                  className={`p-3 rounded-2xl border flex items-center justify-between ${t?.id === driver.teamId ? 'bg-[#1e1e2c] border-[#38bdf8] text-white font-bold' : 'bg-[#070709] border-white/5 text-slate-300'}`}
-                                >
-                                  <div className="flex items-center gap-2.5">
-                                    <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: t?.color }} />
-                                    <span style={{ color: t?.color }}>#{idx + 1} {t?.name}</span>
+                          <span className="text-xs font-mono text-[#e6ff55] font-bold px-3 py-1 rounded-full bg-[#e6ff55]/10 border border-[#e6ff55]/30">
+                            Zona de Promoção: Top 3
+                          </span>
+                        </div>
+                        <div className="flex-1 min-h-0 grid grid-cols-2 lg:grid-cols-4 gap-2 overflow-y-auto lg:overflow-hidden font-mono text-xs content-between">
+                          {sortedSeasonStandings.map((ds, idx) => {
+                            const isTop3 = idx < 3;
+                            const isPlayer = ds.driverName === driver.name;
+                            const tm = TEAMS.find(t => t.id === ds.teamId);
+                            return (
+                              <div 
+                                key={ds.driverName} 
+                                className={`px-3 py-2 rounded-xl border flex items-center justify-between transition-all ${
+                                  isPlayer 
+                                    ? 'bg-[#1e1e2c] border-[#e6ff55] ring-1 ring-[#e6ff55]/40 text-white font-bold shadow-md' 
+                                    : isTop3 
+                                    ? 'bg-[#191924] border-[#ff5f8f]/40 text-white' 
+                                    : 'bg-[#070709] border-white/5 text-[#8e8e9c]'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className={`w-6 font-bold tabular-nums shrink-0 ${isTop3 ? 'text-[#e6ff55]' : 'text-[#8e8e9c]'}`}>
+                                    #{idx + 1}
+                                  </span>
+                                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: tm?.color || '#38bdf8' }} />
+                                  <span className={`truncate ${isPlayer ? 'text-[#e6ff55]' : 'text-white'}`}>{ds.driverName}</span>
+                                </div>
+                                <span className="text-[#e6ff55] font-bold tabular-nums shrink-0 ml-2">
+                                  {ds.points}p <span className="text-[10px] text-[#8e8e9c]">({ds.wins}V)</span>
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : championshipViewMode === 'construtores' ? (
+                      /* SUB-PAGE 2: 10 CONSTRUTORES EM GRADE 2x5 ESPAÇADA */
+                      <div className="flex-1 min-h-0 bg-[#14141c] border border-white/5 rounded-2xl p-4 shadow-xl flex flex-col justify-between gap-2.5 overflow-hidden">
+                        <div className="flex items-center justify-between shrink-0">
+                          <h3 className="text-sm sm:text-base font-display font-black italic uppercase text-white tracking-wider flex items-center gap-2">
+                            <Award className="w-4 h-4 text-[#38bdf8]" />
+                            MUNDIAL DE CONSTRUTORES ({driver.category.toUpperCase()})
+                          </h3>
+                          <span className="text-xs font-mono text-[#38bdf8] font-bold">
+                            Sua Equipe: {currentTeam.name}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-h-0 grid grid-cols-1 sm:grid-cols-2 gap-2.5 overflow-y-auto lg:overflow-hidden font-mono text-xs content-between">
+                          {[...constructorStandings].sort((a, b) => b.points - a.points).map((cs, idx) => {
+                            const t = TEAMS.find(x => x.id === cs.teamId)!;
+                            const isPlayerTeam = t?.id === driver.teamId;
+                            return (
+                              <div 
+                                key={cs.teamId} 
+                                className={`px-4 py-3 rounded-2xl border flex items-center justify-between ${
+                                  isPlayerTeam
+                                    ? 'bg-[#1e1e2c] border-[#38bdf8] ring-1 ring-[#38bdf8]/40 text-white font-bold shadow-md'
+                                    : 'bg-[#070709] border-white/5 text-slate-300'
+                                }`}
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <span className="text-sm font-display font-black italic text-[#8e8e9c] w-6">#{idx + 1}</span>
+                                  <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: t?.color }} />
+                                  <div className="min-w-0">
+                                    <span className="text-sm font-display font-black italic uppercase truncate block" style={{ color: t?.color }}>
+                                      {t?.name}
+                                    </span>
+                                    <span className="text-[10px] text-[#8e8e9c] block">{t?.bonusType}</span>
                                   </div>
-                                  <span className="text-[#38bdf8] font-bold tabular-nums">{cs.points} pts ({cs.wins}V)</span>
-                                </motion.div>
-                              );
-                            })}
-                          </div>
+                                </div>
+                                <span className="text-[#38bdf8] text-sm font-bold tabular-nums shrink-0 ml-2">
+                                  {cs.points} pts ({cs.wins}V)
+                                </span>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     ) : (
-                      /* HISTÓRICO DE CARREIRA SECTION */
-                      <div className="bg-[#14141c] border border-white/5 rounded-3xl p-5 sm:p-6 space-y-4 shadow-xl">
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-white/5 pb-3">
+                      /* SUB-PAGE 3: HISTÓRICO DE CARREIRA */
+                      <div className="flex-1 min-h-0 bg-[#14141c] border border-white/5 rounded-2xl p-4 flex flex-col gap-3 shadow-xl overflow-hidden">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-white/5 pb-2 shrink-0">
                           <div>
-                            <h3 className="text-lg font-display font-black italic uppercase text-white flex items-center gap-2">
+                            <h3 className="text-sm sm:text-base font-display font-black italic uppercase text-white flex items-center gap-2">
                               <History className="w-4 h-4 text-[#e6ff55]" />
-                              HISTÓRICO DE CARREIRA
+                              HISTÓRICO DE TEMPORADAS
                             </h3>
                             <p className="text-xs text-[#8e8e9c]">
-                              Registro de todas as temporadas disputadas.
+                              Registro oficial de todas as temporadas disputadas.
                             </p>
                           </div>
                           <div className="flex items-center gap-2 font-mono text-xs">
-                            <div className="bg-[#191924] px-3 py-1.5 rounded-xl border border-white/5 text-center">
+                            <div className="bg-[#191924] px-3 py-1 rounded-xl border border-white/5 text-center">
                               <span className="text-[9px] text-[#8e8e9c] block">ANOS</span>
                               <strong className="text-white">{driver.careerStats.seasons}</strong>
                             </div>
-                            <div className="bg-[#191924] px-3 py-1.5 rounded-xl border border-white/5 text-center">
+                            <div className="bg-[#191924] px-3 py-1 rounded-xl border border-white/5 text-center">
                               <span className="text-[9px] text-[#8e8e9c] block">TÍTULOS</span>
                               <strong className="text-[#e6ff55]">{driver.careerStats.championships}</strong>
                             </div>
-                            <div className="bg-[#191924] px-3 py-1.5 rounded-xl border border-white/5 text-center">
+                            <div className="bg-[#191924] px-3 py-1 rounded-xl border border-white/5 text-center">
                               <span className="text-[9px] text-[#8e8e9c] block">VITÓRIAS</span>
                               <strong className="text-[#ff5f8f]">{driver.careerStats.wins}</strong>
                             </div>
                           </div>
                         </div>
 
-                        <div className="overflow-x-auto">
+                        <div className="flex-1 min-h-0 overflow-y-auto">
                           <table className="w-full text-left border-collapse font-mono text-xs">
-                            <thead>
+                            <thead className="sticky top-0 bg-[#14141c]">
                               <tr className="border-b border-white/5 text-[10px] uppercase text-[#8e8e9c]">
-                                <th className="py-2.5 px-3">Ano</th>
-                                <th className="py-2.5 px-3">Cat</th>
-                                <th className="py-2.5 px-3">Equipe</th>
-                                <th className="py-2.5 px-3 text-center">Vit</th>
-                                <th className="py-2.5 px-3 text-center">Pts</th>
-                                <th className="py-2.5 px-3 text-right">Pos Final</th>
+                                <th className="py-2 px-3">Ano</th>
+                                <th className="py-2 px-3">Cat</th>
+                                <th className="py-2 px-3">Equipe</th>
+                                <th className="py-2 px-3 text-center">Vit</th>
+                                <th className="py-2 px-3 text-center">Pts</th>
+                                <th className="py-2 px-3 text-right">Pos Final</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
                               {(driver.seasonHistory || []).map((entry, i) => (
-                                <motion.tr 
-                                  key={i} 
-                                  initial={{ opacity: 0, y: 8 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{ delay: i * 0.04 }}
-                                  className="bg-[#070709] hover:bg-[#191924] transition-colors"
-                                >
-                                  <td className="py-3 px-3 font-bold text-white">{entry.season}</td>
-                                  <td className="py-3 px-3">
-                                    <span className="px-2 py-0.5 rounded-full bg-[#191924] text-slate-200 uppercase text-[9px] font-bold">
+                                <tr key={i} className="bg-[#070709] hover:bg-[#191924] transition-colors">
+                                  <td className="py-2.5 px-3 font-bold text-white">{entry.season}</td>
+                                  <td className="py-2.5 px-3">
+                                    <span className="px-2 py-0.5 rounded-full bg-[#191924] text-slate-200 uppercase text-[10px] font-bold">
                                       {entry.category.toUpperCase()}
                                     </span>
                                   </td>
-                                  <td className="py-3 px-3">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.teamColor }}></span>
+                                  <td className="py-2.5 px-3">
+                                    <div className="flex items-center gap-2">
+                                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.teamColor }}></span>
                                       <span className="font-semibold text-slate-200">{entry.teamName}</span>
                                     </div>
                                   </td>
-                                  <td className="py-3 px-3 text-center font-bold text-[#e6ff55] tabular-nums">{entry.wins}</td>
-                                  <td className="py-3 px-3 text-center text-slate-300 tabular-nums">{entry.points}</td>
-                                  <td className="py-3 px-3 text-right">
-                                    <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                                  <td className="py-2.5 px-3 text-center font-bold text-[#e6ff55] tabular-nums">{entry.wins}</td>
+                                  <td className="py-2.5 px-3 text-center text-slate-300 tabular-nums">{entry.points}</td>
+                                  <td className="py-2.5 px-3 text-right">
+                                    <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] ${
                                       entry.finalPosition === 1
                                         ? 'bg-[#e6ff55]/20 text-[#e6ff55] border border-[#e6ff55]/40'
                                         : entry.finalPosition <= 3
@@ -3948,41 +3980,36 @@ export default function App() {
                                       {entry.finalPosition}º
                                     </span>
                                   </td>
-                                </motion.tr>
+                                </tr>
                               ))}
 
-                              <motion.tr 
-                                initial={{ opacity: 0, y: 8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.1 }}
-                                className="bg-[#1e1e2c]"
-                              >
-                                <td className="py-3 px-3 font-bold text-white">
-                                  {currentSeason} <span className="text-[9px] text-[#e6ff55] uppercase ml-1">(Atual)</span>
+                              <tr className="bg-[#1e1e2c]">
+                                <td className="py-2.5 px-3 font-bold text-white">
+                                  {currentSeason} <span className="text-[10px] text-[#e6ff55] uppercase ml-1">(Atual)</span>
                                 </td>
-                                <td className="py-3 px-3">
-                                  <span className="px-2 py-0.5 rounded-full bg-[#e6ff55]/20 text-[#e6ff55] uppercase text-[9px] font-bold">
+                                <td className="py-2.5 px-3">
+                                  <span className="px-2 py-0.5 rounded-full bg-[#e6ff55]/20 text-[#e6ff55] uppercase text-[10px] font-bold">
                                     {driver.category.toUpperCase()}
                                   </span>
                                 </td>
-                                <td className="py-3 px-3">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: currentTeam.color }}></span>
+                                <td className="py-2.5 px-3">
+                                  <div className="flex items-center gap-2">
+                                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: currentTeam.color }}></span>
                                     <span className="font-semibold text-white">{currentTeam.name}</span>
                                   </div>
                                 </td>
-                                <td className="py-3 px-3 text-center font-bold text-[#e6ff55] tabular-nums">
+                                <td className="py-2.5 px-3 text-center font-bold text-[#e6ff55] tabular-nums">
                                   {currentPlayerStanding?.wins ?? 0}
                                 </td>
-                                <td className="py-3 px-3 text-center text-slate-300 tabular-nums">
+                                <td className="py-2.5 px-3 text-center text-slate-300 tabular-nums">
                                   {currentPlayerStanding?.points ?? 0}
                                 </td>
-                                <td className="py-3 px-3 text-right">
-                                  <span className="px-2 py-0.5 rounded-full bg-[#e6ff55]/20 text-[#e6ff55] font-bold text-[10px]">
+                                <td className="py-2.5 px-3 text-right">
+                                  <span className="px-2.5 py-0.5 rounded-full bg-[#e6ff55]/20 text-[#e6ff55] font-bold text-[10px]">
                                     {currentPlayerRank}º (Ativo)
                                   </span>
                                 </td>
-                              </motion.tr>
+                              </tr>
                             </tbody>
                           </table>
                         </div>
@@ -3998,7 +4025,7 @@ export default function App() {
           {/* FLOATING CURVED PILL NAVIGATION DOCK (VISIBLE ON MOBILE OR WHEN MOBILE FRAME MODE IS ACTIVE) */}
           <nav 
             aria-label="Navegação Principal" 
-            className={`${isWidescreenMode ? 'md:hidden' : ''} fixed bottom-3 left-0 right-0 w-[94%] max-w-[420px] mx-auto bg-[#14141c]/95 border border-white/15 rounded-full px-3 py-2 z-40 backdrop-blur-xl flex items-center justify-between shadow-[0_12px_40px_rgba(0,0,0,0.85)]`}
+            className={`${isWidescreenMode ? 'md:hidden' : ''} fixed bottom-2.5 left-0 right-0 w-[94%] max-w-[420px] mx-auto bg-[#14141c]/95 border border-white/15 rounded-full px-3 py-2 z-40 backdrop-blur-xl flex items-center justify-between shadow-[0_12px_40px_rgba(0,0,0,0.85)]`}
           >
             {[
               { id: 'garagem', label: 'Garagem', icon: User },
@@ -4014,16 +4041,17 @@ export default function App() {
                 return (
                   <button
                     key={item.id}
+                    type="button"
                     onClick={() => switchHubTab(item.id as HubTab)}
-                    className={`flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full font-display font-black italic uppercase transition-all cursor-pointer relative -translate-y-2.5 shadow-xl ${
+                    className={`min-h-[42px] flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full font-display font-black italic uppercase transition-all cursor-pointer relative -translate-y-2 shadow-xl ${
                       isActive
-                        ? 'bg-[#e6ff55] text-black ring-4 ring-[#e6ff55]/30 shadow-[#e6ff55]/40 scale-110'
+                        ? 'bg-[#e6ff55] text-black ring-4 ring-[#e6ff55]/30 shadow-[#e6ff55]/40 scale-105'
                         : 'bg-[#191924] text-[#8e8e9c] border border-white/10 hover:text-white hover:border-white/20'
                     }`}
                     title="Próxima Corrida"
                   >
                     <Calendar className="w-4 h-4 shrink-0" />
-                    <span className="text-[11px] tracking-wider leading-none">CORRIDA</span>
+                    <span className="text-xs tracking-wider leading-none">CORRIDA</span>
                   </button>
                 );
               }
@@ -4031,11 +4059,12 @@ export default function App() {
               return (
                 <button
                   key={item.id}
+                  type="button"
                   onClick={() => switchHubTab(item.id as HubTab)}
                   className={`flex flex-col items-center justify-center transition-all cursor-pointer relative ${
                     isActive 
-                      ? 'w-10 h-10 rounded-full bg-[#e6ff55] text-black shadow-lg shadow-[#e6ff55]/30 scale-110' 
-                      : 'w-8 h-8 rounded-full text-[#8e8e9c] hover:text-white'
+                      ? 'w-10 h-10 rounded-full bg-[#e6ff55] text-black shadow-lg shadow-[#e6ff55]/30 scale-105' 
+                      : 'w-10 h-10 rounded-full text-[#8e8e9c] hover:text-white'
                   }`}
                   title={item.label}
                 >
@@ -4047,707 +4076,861 @@ export default function App() {
         </div>
       )}
 
-      {/* QUALIFYING SESSION SCREEN WITH STARTING TIRE SELECTION */}
+      {/* QUALIFYING SESSION SCREEN WITH 2-IN-1 TOGGLE (ESTRATÉGIA & TOP 3 vs GRID COMPLETO 20 PILOTOS) */}
       {gameState === 'qualifying' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/90 backdrop-blur-md overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/92 backdrop-blur-md overflow-hidden">
           <motion.div 
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="max-w-3xl w-full bg-[#14141c] border border-white/10 rounded-3xl p-5 sm:p-8 shadow-2xl my-auto space-y-5"
+            className="max-w-5xl w-full max-h-[96vh] bg-[#14141c] border border-white/10 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col justify-between gap-3 overflow-hidden"
           >
-            <div className="flex items-center justify-between pb-3 border-b border-white/5">
-              <div>
+            {/* TOP HEADER */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-white/5 shrink-0 relative z-20">
+              <div className="min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
                   <span className="text-[10px] font-mono uppercase tracking-widest text-[#e6ff55] font-bold">CLASSIFICAÇÃO OFICIAL // Q3</span>
                   {(() => {
                     const wb = getWeatherBadge(currentTrack.weather);
                     return (
-                      <span className={`text-[9px] px-2 py-0.2 rounded-full border font-mono font-bold flex items-center gap-1 ${wb.badgeClass}`}>
+                      <span className={`text-[10px] px-2.5 py-0.5 rounded-full border font-mono font-bold flex items-center gap-1 ${wb.badgeClass}`}>
                         <span>{wb.icon}</span>
                         <span>{wb.label}</span>
                       </span>
                     );
                   })()}
                 </div>
-                <h3 className="text-xl sm:text-3xl font-display font-black italic uppercase text-white leading-tight">
-                  {currentTrack.name}
-                </h3>
-                <p className="text-xs text-[#8e8e9c] font-mono">{currentTrack.profileType} · {currentTrack.laps} Voltas</p>
+                <div className="flex items-baseline gap-2.5">
+                  <h3 className="text-lg sm:text-2xl font-display font-black italic uppercase text-white leading-tight truncate">
+                    {currentTrack.name}
+                  </h3>
+                  <p className="text-xs text-[#8e8e9c] font-mono shrink-0">{currentTrack.laps} Voltas</p>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
+
+              <div className="flex items-center gap-2 shrink-0">
+                {!isQualifyingRunning && (
+                  <div className="flex items-center gap-1 bg-[#070709] p-1 rounded-xl border border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setQualiViewMode('estrategia')}
+                      className={`min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-display font-black italic uppercase transition-all cursor-pointer flex items-center gap-1.5 ${
+                        qualiViewMode === 'estrategia'
+                          ? 'bg-[#e6ff55] text-black shadow-md'
+                          : 'text-[#8e8e9c] hover:text-white'
+                      }`}
+                    >
+                      <Flame className="w-3.5 h-3.5" />
+                      <span>Estratégia & Pneus</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQualiViewMode('grid20')}
+                      className={`min-h-[38px] px-3 py-1.5 rounded-lg text-xs font-display font-black italic uppercase transition-all cursor-pointer flex items-center gap-1.5 ${
+                        qualiViewMode === 'grid20'
+                          ? 'bg-[#e6ff55] text-black shadow-md'
+                          : 'text-[#8e8e9c] hover:text-white'
+                      }`}
+                    >
+                      <Trophy className="w-3.5 h-3.5" />
+                      <span>Grid Q3 (20)</span>
+                    </button>
+                  </div>
+                )}
+
                 <button
                   type="button"
                   onClick={handleSaveAndReturnToMenu}
-                  className="px-3 py-1.5 bg-[#1e1e2d] hover:bg-[#e6ff55] hover:text-black text-[#e6ff55] font-display font-black italic uppercase rounded-xl text-xs transition-all cursor-pointer border border-[#e6ff55]/40 flex items-center gap-1.5 shadow-sm"
+                  className="min-h-[38px] px-3 py-1.5 bg-[#1e1e2d] hover:bg-[#e6ff55] hover:text-black text-[#e6ff55] font-display font-black italic uppercase rounded-xl text-xs transition-all cursor-pointer border border-[#e6ff55]/40 flex items-center gap-1.5 shadow-sm"
                   title="Salvar e voltar ao menu de seleção de pilotos"
                 >
                   <Save className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">SALVAR & MENU</span>
                 </button>
-                <div className="w-24 sm:w-32 hidden sm:block">
-                  <TrackMapVector svgPath={currentTrack.svgPath} accentColor="#e6ff55" className="w-full h-14" />
-                </div>
               </div>
             </div>
 
             {isQualifyingRunning ? (
-              <div className="py-12 text-center space-y-3">
+              <div className="py-12 text-center space-y-3 my-auto">
                 <div className="w-10 h-10 border-3 border-[#e6ff55] border-t-transparent rounded-full animate-spin mx-auto"></div>
-                <div className="text-xs sm:text-sm text-[#e6ff55] font-mono animate-pulse uppercase tracking-wider">
-                  Pilotos na pista marcando volta rápida...
+                <div className="text-sm text-[#e6ff55] font-mono animate-pulse uppercase tracking-wider">
+                  Pilotos na pista marcando volta rápida no Q3...
                 </div>
               </div>
             ) : (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[260px] overflow-y-auto pr-1 font-mono text-xs">
-                  {qualifyingResults.map((q, idx) => (
-                    <motion.div 
-                      key={q.driverName}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: idx * 0.015 }}
-                      className={`p-2.5 rounded-2xl border flex items-center justify-between transition-all ${
-                        q.isPlayer 
-                          ? 'bg-[#1e1e2c] border-[#e6ff55] text-white font-bold shadow-md' 
-                          : 'bg-[#070709] border-white/5 text-[#8e8e9c]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        <span className={`w-6 font-bold tabular-nums ${idx < 3 ? 'text-[#e6ff55]' : 'text-[#8e8e9c]'}`}>P{idx + 1}</span>
-                        <span className={`truncate ${q.isPlayer ? 'text-[#e6ff55]' : 'text-white'}`}>{q.driverName}</span>
-                      </div>
-                      <span className="text-[#e6ff55] font-bold tabular-nums shrink-0">{q.lapTime}</span>
-                    </motion.div>
-                  ))}
-                </div>
+              <div className="flex-1 min-h-0 flex flex-col justify-between gap-3 overflow-hidden relative z-20">
+                {qualiViewMode === 'estrategia' ? (
+                  /* SUB-PAGE 1: SUA LARGADA & TOP 3 + DICA DO ENGENHEIRO & PNEUS (SEM SOBREPOSIÇÃO) */
+                  <div className="flex-1 min-h-0 overflow-y-auto pr-1 custom-scrollbar">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
+                      {/* LEFT 5 COLS: SUA LARGADA EM DESTAQUE + TOP 3 DO GRID */}
+                      <div className="lg:col-span-5 flex flex-col gap-3">
+                        <div className="bg-[#070709] border border-white/10 rounded-2xl p-3.5 flex flex-col justify-between gap-3 h-full shadow-lg">
+                          {/* Player Starting Position & Rival Highlight at Top so it is never covered */}
+                          {(() => {
+                            if (!driver) return null;
+                            const rivalTargetName = driver.seasonGoals?.find(g => g.targetRivalName)?.targetRivalName 
+                              || getCategoryRivals(driver.category)[0]?.name;
+                            const playerResult = qualifyingResults.find(q => q.isPlayer);
+                            const playerPos = qualifyingResults.findIndex(q => q.isPlayer) + 1;
+                            const rivalResult = qualifyingResults.find(q => q.driverName === rivalTargetName) 
+                              || qualifyingResults.find(q => !q.isPlayer);
+                            const rivalPos = rivalResult ? qualifyingResults.findIndex(q => q.driverName === rivalResult.driverName) + 1 : 0;
 
-                {/* Dica da Equipe de Engenharia */}
-                {(() => {
-                  const tireAdvice = getTeamTireAdvice(currentTrack);
-                  return (
-                    <div className="bg-[#191924] border border-white/5 rounded-2xl p-3.5 flex items-start gap-3">
-                      <div className="p-2 bg-[#e6ff55]/20 text-[#e6ff55] rounded-xl shrink-0 mt-0.5">
-                        <Headphones className="w-4 h-4" />
-                      </div>
-                      <div className="space-y-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="text-[10px] font-display font-black italic uppercase text-[#e6ff55] tracking-wider flex items-center gap-1">
-                            <Radio className="w-3 h-3 text-[#e6ff55] animate-pulse" />
-                            DICA DO ENGENHEIRO
-                          </span>
-                          <span className={`text-[9px] px-2 py-0.2 rounded-full border font-mono font-bold ${tireAdvice.badgeStyle}`}>
-                            Recomendado: {tireAdvice.recommendedTire}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-300 leading-snug">
-                          "{tireAdvice.reason}"
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })()}
+                            if (!playerResult || !rivalResult) return null;
+                            const isPlayerFaster = playerResult.rawTime < rivalResult.rawTime;
 
-                {/* Confirm Starting Tire Compound right before Race Start */}
-                {(() => {
-                  const tireDetails = getTireDurabilityDetails(currentTrack);
-                  const tireAdvice = getTeamTireAdvice(currentTrack);
-
-                  return (
-                    <div className="bg-[#070709] p-3.5 rounded-2xl border border-white/5 space-y-2.5">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-display font-black italic uppercase text-slate-300 flex items-center gap-1.5">
-                          <span>PNEU DE LARGADA:</span>
-                          <span className="text-[#e6ff55] text-[10px] font-mono font-normal">
-                            (Engenharia: {tireAdvice.recommendedTire})
-                          </span>
-                        </span>
-                        <span className="text-[10px] text-[#8e8e9c] font-mono">Pit Stop auto &lt; 27%</span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2.5">
-                        {([
-                          { 
-                            id: 'Macio' as TireCompound, 
-                            label: 'Macio (S)', 
-                            badge: 'S', 
-                            badgeColor: 'border-red-500 text-red-400 bg-red-500/10',
-                            info: tireDetails.Macio 
-                          },
-                          { 
-                            id: 'Médio' as TireCompound, 
-                            label: 'Médio (M)', 
-                            badge: 'M', 
-                            badgeColor: 'border-[#e6ff55] text-[#e6ff55] bg-[#e6ff55]/10',
-                            info: tireDetails.Médio 
-                          },
-                          { 
-                            id: 'Duro' as TireCompound, 
-                            label: 'Duro (H)', 
-                            badge: 'H', 
-                            badgeColor: 'border-slate-200 text-white bg-slate-200/10',
-                            info: tireDetails.Duro 
-                          },
-                        ]).map(t => {
-                          const isSelected = startingTire === t.id;
-                          const isOpt = t.info.isOptimal;
-
-                          return (
-                            <button
-                              key={t.id}
-                              type="button"
-                              onClick={() => setStartingTire(t.id)}
-                              className={`p-2.5 rounded-2xl border text-left cursor-pointer transition-all ${
-                                isSelected
-                                  ? 'bg-[#1e1e2c] border-[#e6ff55] ring-2 ring-[#e6ff55]/30 text-white shadow-md'
-                                  : isOpt
-                                  ? 'bg-[#191924] border-[#e6ff55]/40 text-slate-300'
-                                  : 'bg-[#191924] border-white/5 text-[#8e8e9c]'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between mb-1">
-                                <div className="flex items-center gap-1.5">
-                                  <span className={`w-4 h-4 rounded-full border flex items-center justify-center text-[9px] font-mono font-bold ${t.badgeColor}`}>
-                                    {t.badge}
-                                  </span>
-                                  <span className="text-xs font-display font-black italic uppercase leading-none">{t.label}</span>
+                            return (
+                              <div className="grid grid-cols-2 gap-2.5 pb-2.5 border-b border-white/10 shrink-0">
+                                <div className={`p-3 rounded-xl border ${isPlayerFaster ? 'bg-[#1e1e2c] border-[#e6ff55]' : 'bg-[#14141c] border-[#e6ff55]/40'}`}>
+                                  <div className="text-[10px] font-mono text-[#e6ff55] uppercase font-bold">Sua Largada</div>
+                                  <div className="flex items-baseline justify-between mt-1">
+                                    <span className="text-2xl font-display font-black italic text-[#e6ff55]">P{playerPos}</span>
+                                    <span className="text-xs font-mono font-bold text-white">{playerResult.lapTime}</span>
+                                  </div>
+                                  <div className="text-xs font-bold text-white truncate mt-0.5">{playerResult.driverName}</div>
                                 </div>
-                                {isOpt && (
-                                  <span className="text-[8px] px-1.5 py-0.2 rounded-full bg-[#e6ff55]/20 text-[#e6ff55] border border-[#e6ff55]/40 font-mono">
-                                    ★ IDEAL
+
+                                <div className={`p-3 rounded-xl border ${!isPlayerFaster ? 'bg-[#1e1e2c] border-[#ff5f8f]' : 'bg-[#14141c] border-white/10'}`}>
+                                  <div className="text-[10px] font-mono text-[#ff5f8f] uppercase font-bold">Rival Direto</div>
+                                  <div className="flex items-baseline justify-between mt-1">
+                                    <span className="text-2xl font-display font-black italic text-[#ff5f8f]">P{rivalPos}</span>
+                                    <span className="text-xs font-mono font-bold text-white">{rivalResult.lapTime}</span>
+                                  </div>
+                                  <div className="text-xs font-bold text-white truncate mt-0.5">{rivalResult.driverName}</div>
+                                </div>
+                              </div>
+                            );
+                          })()}
+
+                          <div className="space-y-2 flex-1 flex flex-col justify-between">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-display font-black italic uppercase text-[#e6ff55] flex items-center gap-1.5">
+                                <Crown className="w-4 h-4" />
+                                TOP 3 DO GRID DE LARGADA
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setQualiViewMode('grid20')}
+                                className="text-[11px] font-mono text-[#38bdf8] hover:underline cursor-pointer"
+                              >
+                                Ver todos os 20 →
+                              </button>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              {qualifyingResults.slice(0, 3).map((q, idx) => {
+                                const gapToPole = idx === 0 ? 'POLE' : `+${(q.rawTime - qualifyingResults[0].rawTime).toFixed(3)}s`;
+                                const teamColor = getDriverTeamColor(q.teamId);
+                                return (
+                                  <div
+                                    key={q.driverName}
+                                    className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 ${
+                                      q.isPlayer
+                                        ? 'bg-[#1e1e2c] border-[#e6ff55] text-white'
+                                        : 'bg-[#14141c] border-white/5 text-slate-200'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className={`px-2 py-0.5 rounded text-xs font-mono font-bold ${
+                                        idx === 0 ? 'bg-[#e6ff55] text-black' : idx === 1 ? 'bg-slate-300 text-black' : 'bg-amber-600 text-white'
+                                      }`}>
+                                        P{idx + 1}
+                                      </span>
+                                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: teamColor }} />
+                                      <span className="font-display font-black italic uppercase text-xs sm:text-sm truncate">
+                                        {q.driverName} {q.isPlayer && '(VOCÊ)'}
+                                      </span>
+                                    </div>
+                                    <div className="text-right font-mono shrink-0">
+                                      <div className="text-xs font-bold text-[#e6ff55] tabular-nums">{q.lapTime}</div>
+                                      <div className="text-[10px] text-[#8e8e9c]">{gapToPole}</div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* RIGHT 7 COLS: ENGINEER ADVICE + LARGE TIRE SELECTOR BUTTONS + PACE TOGGLES */}
+                      <div className="lg:col-span-7 flex flex-col justify-between gap-3">
+                        {(() => {
+                          const tireAdvice = getTeamTireAdvice(currentTrack);
+                          return (
+                            <div className="bg-[#191924] border border-white/10 rounded-2xl p-3.5 flex items-center gap-3 shrink-0 shadow-md">
+                              <div className="p-2.5 bg-[#e6ff55]/20 text-[#e6ff55] rounded-xl shrink-0">
+                                <Headphones className="w-5 h-5" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                                  <span className="text-xs font-display font-black italic uppercase text-[#e6ff55]">
+                                    DICA DO ENGENHEIRO DE PISTA
                                   </span>
-                                )}
+                                  <span className={`text-[10px] px-2.5 py-0.5 rounded-full border font-mono font-bold ${tireAdvice.badgeStyle}`}>
+                                    Recomendado: {tireAdvice.recommendedTire}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-slate-300 leading-snug">
+                                  "{tireAdvice.reason}"
+                                </p>
                               </div>
-                              <div className="text-[10px] font-mono font-semibold text-slate-200">
-                                ~{t.info.minLaps} a {t.info.maxLaps} voltas
-                              </div>
-                            </button>
+                            </div>
                           );
-                        })}
+                        })()}
+
+                        {(() => {
+                          const tireDetails = getTireDurabilityDetails(currentTrack);
+                          return (
+                            <div className="bg-[#070709] p-3.5 rounded-2xl border border-white/10 space-y-3 flex-1 flex flex-col justify-between shadow-lg">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-display font-black italic uppercase text-white">
+                                  SELECIONE O PNEU DE LARGADA
+                                </span>
+                                <span className="text-xs text-[#8e8e9c] font-mono">Troca auto no box &lt; 27%</span>
+                              </div>
+
+                              <div className="grid grid-cols-3 gap-2.5">
+                                {([
+                                  { 
+                                    id: 'Macio' as TireCompound, 
+                                    label: 'Macio', 
+                                    badge: 'S', 
+                                    badgeColor: 'border-red-500 text-red-400 bg-red-500/10',
+                                    info: tireDetails.Macio 
+                                  },
+                                  { 
+                                    id: 'Médio' as TireCompound, 
+                                    label: 'Médio', 
+                                    badge: 'M', 
+                                    badgeColor: 'border-[#e6ff55] text-[#e6ff55] bg-[#e6ff55]/10',
+                                    info: tireDetails.Médio 
+                                  },
+                                  { 
+                                    id: 'Duro' as TireCompound, 
+                                    label: 'Duro', 
+                                    badge: 'H', 
+                                    badgeColor: 'border-slate-200 text-white bg-slate-200/10',
+                                    info: tireDetails.Duro 
+                                  },
+                                ]).map(t => {
+                                  const isSelected = startingTire === t.id;
+                                  const isOpt = t.info.isOptimal;
+
+                                  return (
+                                    <button
+                                      key={t.id}
+                                      type="button"
+                                      onClick={() => setStartingTire(t.id)}
+                                      className={`min-h-[86px] p-3 rounded-2xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
+                                        isSelected
+                                          ? 'bg-[#1e1e2c] border-[#e6ff55] ring-2 ring-[#e6ff55]/40 text-white shadow-lg'
+                                          : isOpt
+                                          ? 'bg-[#191924] border-[#e6ff55]/40 text-slate-200 hover:bg-[#222230]'
+                                          : 'bg-[#191924] border-white/10 text-[#8e8e9c] hover:bg-[#222230]'
+                                      }`}
+                                    >
+                                      <div className="flex items-center justify-between gap-1">
+                                        <div className="flex items-center gap-2">
+                                          <span className={`w-6 h-6 rounded-full border flex items-center justify-center text-xs font-mono font-bold shrink-0 ${t.badgeColor}`}>
+                                            {t.badge}
+                                          </span>
+                                          <span className="text-sm font-display font-black italic uppercase">{t.label}</span>
+                                        </div>
+                                        {isOpt && (
+                                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#e6ff55]/20 text-[#e6ff55] border border-[#e6ff55]/40 font-mono font-bold">
+                                            ★ IDEAL
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="text-xs font-mono font-bold text-slate-200 mt-1">
+                                        ~{t.info.minLaps} a {t.info.maxLaps} voltas
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+
+                              {/* Quick Pace & Pit Stop Buttons */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                                <div className="grid grid-cols-3 gap-1 bg-[#14141c] p-1 rounded-xl border border-white/5">
+                                  {([
+                                    { id: 'conservador', label: 'Poupar' },
+                                    { id: 'equilibrado', label: 'Normal' },
+                                    { id: 'agressivo', label: 'Ataque' }
+                                  ] as const).map(st => (
+                                    <button
+                                      key={st.id}
+                                      type="button"
+                                      onClick={() => setDrivingStyle(st.id)}
+                                      className={`min-h-[36px] py-1.5 rounded-lg text-[11px] font-display font-black italic uppercase cursor-pointer transition-all ${
+                                        drivingStyle === st.id
+                                          ? 'bg-[#e6ff55] text-black shadow'
+                                          : 'text-[#8e8e9c] hover:text-white'
+                                      }`}
+                                    >
+                                      {st.label}
+                                    </button>
+                                  ))}
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-1 bg-[#14141c] p-1 rounded-xl border border-white/5">
+                                  {([
+                                    { id: 'conservador', label: 'Box 3.0s' },
+                                    { id: 'arriscado', label: 'Box 1.8s' }
+                                  ] as const).map(pm => (
+                                    <button
+                                      key={pm.id}
+                                      type="button"
+                                      onClick={() => setAutoPitMode(pm.id)}
+                                      className={`min-h-[36px] py-1.5 rounded-lg text-[11px] font-display font-black italic uppercase cursor-pointer transition-all ${
+                                        autoPitMode === pm.id
+                                          ? 'bg-[#e6ff55] text-black shadow'
+                                          : 'text-[#8e8e9c] hover:text-white'
+                                      }`}
+                                    >
+                                      {pm.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
-                  );
-                })()}
+                  </div>
+                ) : (
+                  /* SUB-PAGE 2: GRID COMPLETO DE 20 PILOTOS EM 4 COLUNAS ESPAÇADAS */
+                  <div className="flex-1 min-h-0 flex flex-col justify-between gap-2.5 overflow-hidden">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-xs flex-1 content-between overflow-y-auto sm:overflow-hidden">
+                      {qualifyingResults.map((q, idx) => (
+                        <div 
+                          key={q.driverName}
+                          className={`px-3 py-2 rounded-xl border flex items-center justify-between gap-2 transition-all min-w-0 ${
+                            q.isPlayer 
+                              ? 'bg-[#1e1e2c] border-[#e6ff55] ring-1 ring-[#e6ff55]/40 text-white font-bold shadow-md' 
+                              : 'bg-[#070709] border-white/5 text-[#8e8e9c]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className={`w-6 font-bold tabular-nums shrink-0 ${idx < 3 ? 'text-[#e6ff55]' : 'text-[#8e8e9c]'}`}>P{idx + 1}</span>
+                            <span className={`truncate ${q.isPlayer ? 'text-[#e6ff55]' : 'text-white'}`}>{q.driverName}</span>
+                          </div>
+                          <span className="text-[#e6ff55] font-bold tabular-nums shrink-0 text-[11px]">{q.lapTime}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <button
+                  type="button"
                   onClick={startRaceFromQualifying}
-                  className="w-full bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase py-4 rounded-full text-base tracking-wider transition-all shadow-lg shadow-[#e6ff55]/20 cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full min-h-[50px] bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase py-3 rounded-2xl text-sm sm:text-base tracking-wider transition-all shadow-lg shadow-[#e6ff55]/25 cursor-pointer flex items-center justify-center gap-2 shrink-0 relative z-20"
                 >
                   <Play className="w-5 h-5 fill-current" />
-                  <span>LARGADA OFICIAL ({currentTrack.laps} VOLTAS · PNEU {startingTire})</span>
+                  <span>ALINHAR NO GRID E LARGAR ({currentTrack.laps} VOLTAS · PNEU {startingTire})</span>
                 </button>
               </div>
             )}
           </motion.div>
-
-          {/* QUALIFYING SUMMARY MODAL (TOP 3 & RIVAL COMPARISON) */}
-          <AnimatePresence>
-            {showQualiSummaryModal && !isQualifyingRunning && qualifyingResults.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6 bg-black/95 backdrop-blur-xl overflow-y-auto"
-              >
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.92, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                  className="max-w-2xl w-full bg-[#14141c] border border-white/15 rounded-3xl p-5 sm:p-8 shadow-2xl space-y-6 my-auto text-white relative overflow-hidden"
-                >
-                  {/* Glow accent in modal background */}
-                  <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-3/4 h-28 bg-gradient-to-b from-[#e6ff55]/20 via-[#e6ff55]/5 to-transparent blur-2xl pointer-events-none" />
-
-                  {/* Modal Header */}
-                  <div className="flex items-center justify-between border-b border-white/10 pb-4 relative z-10">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="px-2.5 py-0.5 rounded-full bg-[#e6ff55]/20 border border-[#e6ff55]/40 text-[#e6ff55] font-mono text-[10px] font-bold tracking-widest uppercase flex items-center gap-1">
-                          <Trophy className="w-3 h-3 text-[#e6ff55]" />
-                          RESUMO DA CLASSIFICAÇÃO
-                        </span>
-                        {(() => {
-                          const wb = getWeatherBadge(currentTrack.weather);
-                          return (
-                            <span className={`text-[9px] px-2 py-0.2 rounded-full border font-mono font-bold flex items-center gap-1 ${wb.badgeClass}`}>
-                              <span>{wb.icon}</span>
-                              <span>{wb.label}</span>
-                            </span>
-                          );
-                        })()}
-                      </div>
-                      <h3 className="text-2xl sm:text-3xl font-display font-black italic uppercase tracking-tight text-white">
-                        GRELHA DE LARGADA // {currentTrack.name}
-                      </h3>
-                    </div>
-                    <div className="w-20 h-12 hidden sm:block shrink-0">
-                      <TrackMapVector svgPath={currentTrack.svgPath} accentColor="#e6ff55" className="w-full h-full" />
-                    </div>
-                  </div>
-
-                  {/* Top 3 Times Showcase */}
-                  <div className="space-y-2.5 relative z-10">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#8e8e9c] flex items-center gap-1.5">
-                        <Crown className="w-3.5 h-3.5 text-[#e6ff55]" />
-                        TOP 3 TEMPOS DA CLASSIFICAÇÃO
-                      </span>
-                      <span className="text-[10px] font-mono text-[#8e8e9c]">Q3 SESSÃO FINAL</span>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-2">
-                      {qualifyingResults.slice(0, 3).map((q, idx) => {
-                        const gapToPole = idx === 0 ? 'LÍDER' : `+${(q.rawTime - qualifyingResults[0].rawTime).toFixed(3)}s`;
-                        const teamColor = getDriverTeamColor(q.teamId);
-                        const positionStyles = idx === 0
-                          ? 'bg-gradient-to-r from-[#e6ff55]/20 via-[#1e1e2c] to-[#14141c] border-[#e6ff55] shadow-lg shadow-[#e6ff55]/10'
-                          : idx === 1
-                          ? 'bg-gradient-to-r from-slate-300/10 via-[#1e1e2c] to-[#14141c] border-slate-300/30'
-                          : 'bg-gradient-to-r from-amber-600/10 via-[#1e1e2c] to-[#14141c] border-amber-600/30';
-
-                        const rankBadge = idx === 0
-                          ? { bg: 'bg-[#e6ff55] text-black font-black', text: 'P1 - POLE' }
-                          : idx === 1
-                          ? { bg: 'bg-slate-300 text-black font-bold', text: 'P2' }
-                          : { bg: 'bg-amber-600 text-white font-bold', text: 'P3' };
-
-                        return (
-                          <motion.div
-                            key={q.driverName}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: idx * 0.08 }}
-                            className={`p-3 sm:p-3.5 rounded-2xl border flex items-center justify-between gap-3 relative overflow-hidden ${positionStyles}`}
-                          >
-                            <div className="flex items-center gap-3 truncate">
-                              <span className={`px-2.5 py-1 rounded-xl text-xs font-mono ${rankBadge.bg}`}>
-                                {rankBadge.text}
-                              </span>
-                              <div className="flex items-center gap-2 truncate">
-                                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: teamColor }} />
-                                <span className={`font-display font-black italic uppercase text-sm sm:text-base truncate ${q.isPlayer ? 'text-[#e6ff55]' : 'text-white'}`}>
-                                  {q.driverName}
-                                  {q.isPlayer && <span className="ml-1.5 text-[10px] font-mono text-[#e6ff55] font-normal">(VOCÊ)</span>}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="text-right shrink-0 font-mono">
-                              <div className="text-sm sm:text-base font-bold text-[#e6ff55] tabular-nums">{q.lapTime}</div>
-                              <div className="text-[10px] text-[#8e8e9c] font-semibold">{gapToPole}</div>
-                            </div>
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Rival Head-to-Head Summary Card */}
-                  {(() => {
-                    if (!driver) return null;
-                    const rivalTargetName = driver.seasonGoals?.find(g => g.targetRivalName)?.targetRivalName 
-                      || getCategoryRivals(driver.category)[0]?.name;
-                    
-                    const playerResult = qualifyingResults.find(q => q.isPlayer);
-                    const playerPos = qualifyingResults.findIndex(q => q.isPlayer) + 1;
-                    
-                    const rivalResult = qualifyingResults.find(q => q.driverName === rivalTargetName) 
-                      || qualifyingResults.find(q => !q.isPlayer);
-                    const rivalPos = rivalResult ? qualifyingResults.findIndex(q => q.driverName === rivalResult.driverName) + 1 : 0;
-
-                    if (!playerResult || !rivalResult) return null;
-
-                    const timeDelta = playerResult.rawTime - rivalResult.rawTime;
-                    const isPlayerFaster = timeDelta < 0;
-                    const absDelta = Math.abs(timeDelta).toFixed(3);
-                    const posDiff = Math.abs(playerPos - rivalPos);
-
-                    return (
-                      <div className="bg-[#070709] border border-white/10 rounded-2xl p-4 space-y-3 relative z-10">
-                        <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                          <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#38bdf8] flex items-center gap-1.5">
-                            <Flame className="w-3.5 h-3.5 text-[#ff5f8f]" />
-                            DUELO DE RIVAIS // COMPARATIVO Q3
-                          </span>
-                          <span className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border ${
-                            isPlayerFaster
-                              ? 'bg-[#e6ff55]/20 text-[#e6ff55] border-[#e6ff55]/40'
-                              : 'bg-[#ff5f8f]/20 text-[#ff5f8f] border-[#ff5f8f]/40'
-                          }`}>
-                            {isPlayerFaster ? `🔥 -${absDelta}s MAIS RÁPIDO` : `⚠️ +${absDelta}s ATRÁS DO RIVAL`}
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3 pt-1">
-                          {/* Player side */}
-                          <div className={`p-3 rounded-xl border ${isPlayerFaster ? 'bg-[#1e1e2c] border-[#e6ff55]/50' : 'bg-[#14141c] border-white/5'}`}>
-                            <div className="text-[10px] font-mono text-[#8e8e9c] uppercase mb-0.5">Sua Posição</div>
-                            <div className="flex items-baseline justify-between">
-                              <span className="text-xl font-display font-black italic text-[#e6ff55]">P{playerPos}</span>
-                              <span className="text-xs font-mono font-bold text-white tabular-nums">{playerResult.lapTime}</span>
-                            </div>
-                            <div className="text-xs font-bold text-white truncate mt-1">{playerResult.driverName}</div>
-                          </div>
-
-                          {/* Rival side */}
-                          <div className={`p-3 rounded-xl border ${!isPlayerFaster ? 'bg-[#1e1e2c] border-[#ff5f8f]/50' : 'bg-[#14141c] border-white/5'}`}>
-                            <div className="text-[10px] font-mono text-[#8e8e9c] uppercase mb-0.5">Seu Rival</div>
-                            <div className="flex items-baseline justify-between">
-                              <span className="text-xl font-display font-black italic text-[#ff5f8f]">P{rivalPos}</span>
-                              <span className="text-xs font-mono font-bold text-white tabular-nums">{rivalResult.lapTime}</span>
-                            </div>
-                            <div className="text-xs font-bold text-white truncate mt-1">{rivalResult.driverName}</div>
-                          </div>
-                        </div>
-
-                        {/* Verdict text */}
-                        <div className="text-xs font-mono text-center pt-1 text-slate-300">
-                          {isPlayerFaster ? (
-                            <span className="text-[#e6ff55]">
-                              Vantagem de <strong className="font-bold">{posDiff} {posDiff === 1 ? 'posição' : 'posições'}</strong> no grid de largada em relação a {rivalResult.driverName}!
-                            </span>
-                          ) : (
-                            <span className="text-[#ff5f8f]">
-                              {rivalResult.driverName} larga <strong className="font-bold">{posDiff} {posDiff === 1 ? 'posição' : 'posições'}</strong> à frente no grid de largada.
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Modal Action Button */}
-                  <button
-                    type="button"
-                    onClick={() => setShowQualiSummaryModal(false)}
-                    className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-[#e6ff55] to-[#cbe830] text-black font-display font-black italic uppercase tracking-wider text-sm hover:brightness-110 active:scale-[0.99] transition-all shadow-lg shadow-[#e6ff55]/20 flex items-center justify-center gap-2 cursor-pointer relative z-10"
-                  >
-                    <span>CONTINUAR PARA ESTRATÉGIA DE PNEUS</span>
-                    <ChevronRight className="w-5 h-5 stroke-[3]" />
-                  </button>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
       )}
 
-      {/* FULLSCREEN DESKTOP PIT WALL LIVE RACE VIEW (2-COLUMN WIDESCREEN MONITOR ON DESKTOP) */}
+      {/* FULLSCREEN DESKTOP PIT WALL LIVE RACE VIEW */}
       {gameState === 'race' && driver && (
-        <div className="fixed inset-0 z-50 h-screen w-screen bg-[#070709] flex flex-col justify-between p-2.5 sm:p-4 gap-2.5 overflow-hidden select-none">
+        <div className="fixed inset-0 z-50 h-screen max-h-screen w-screen bg-[#070709] flex flex-col justify-between p-2.5 sm:p-3.5 gap-2.5 overflow-hidden select-none">
           
-          {/* START-LINE ANIMATION OVERLAY (GRID & LIGHTS COUNTDOWN) */}
+          {/* START-LINE ANIMATION OVERLAY (VERTICAL SCROLLABLE ASPHALT TRACK & CARS LAUNCHING UPWARDS) */}
           <AnimatePresence>
             {startLineStage !== 'none' && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[70] bg-[#070709]/95 backdrop-blur-xl flex flex-col justify-between p-3 sm:p-6 overflow-y-auto select-none"
+                className="fixed inset-0 z-[70] h-screen max-h-screen bg-[#070709]/95 backdrop-blur-xl flex flex-col overflow-y-auto select-none custom-scrollbar"
               >
-                {/* TOP BAR: TRACK & SKIP BUTTON */}
-                <div className="flex items-center justify-between border-b border-white/10 pb-3 max-w-5xl w-full mx-auto shrink-0">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="p-2 bg-[#e6ff55]/20 text-[#e6ff55] rounded-xl border border-[#e6ff55]/30 shrink-0">
-                      <Flag className="w-5 h-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-[10px] font-mono text-[#e6ff55] font-bold uppercase tracking-widest truncate">
-                        PROCEDIMENTO DE LARGADA OFICIAL FIA
+                {/* STICKY HEADER + FIA 5-RED-LIGHTS GANTRY */}
+                <div className="sticky top-0 z-40 bg-[#070709]/95 backdrop-blur-xl border-b border-white/10 px-3 sm:px-6 py-2.5 shadow-2xl space-y-2.5 shrink-0">
+                  {/* TOP BAR: TRACK & SKIP BUTTON */}
+                  <div className="flex items-center justify-between max-w-5xl w-full mx-auto">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="p-2 bg-[#e6ff55]/20 text-[#e6ff55] rounded-xl border border-[#e6ff55]/30 shrink-0">
+                        <Flag className="w-4 h-4" />
                       </div>
-                      <h3 className="text-lg sm:text-2xl font-display font-black italic uppercase text-white leading-none truncate">
-                        {currentTrack.name}
-                      </h3>
+                      <div className="min-w-0">
+                        <div className="text-[10px] font-mono text-[#e6ff55] font-bold uppercase tracking-widest truncate">
+                          PROCEDIMENTO DE LARGADA OFICIAL FIA // GRID VERTICAL
+                        </div>
+                        <h3 className="text-base sm:text-xl font-display font-black italic uppercase text-white leading-none truncate">
+                          {currentTrack.name}
+                        </h3>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#14141c] border border-white/10 text-[11px] font-mono text-[#8e8e9c]">
+                        <span>Sua Posição:</span>
+                        <strong className="text-[#e6ff55]">P{playerRaceCar?.pos || '-'}</strong>
+                        <span>·</span>
+                        <span>Pneu {startingTire}</span>
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() => skipStartLineAnimation(racePositions, currentTrack)}
+                        className="min-h-[42px] px-4 py-2 bg-[#191924] hover:bg-[#252535] text-white font-mono text-xs font-bold rounded-xl border border-white/15 transition-all cursor-pointer flex items-center gap-2 shrink-0 shadow-md"
+                      >
+                        <span>Pular Animação</span>
+                        <FastForward className="w-4 h-4 text-[#e6ff55]" />
+                      </button>
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => skipStartLineAnimation(racePositions, currentTrack)}
-                    className="px-3.5 py-1.5 sm:px-4 sm:py-2 bg-[#191924] hover:bg-[#252535] text-[#8e8e9c] hover:text-white font-mono text-xs rounded-xl border border-white/10 transition-all cursor-pointer flex items-center gap-2 shrink-0"
-                  >
-                    <span>Pular Animação</span>
-                    <FastForward className="w-3.5 h-3.5 text-[#e6ff55]" />
-                  </button>
-                </div>
+                  {/* CENTER GANTRY: F1 5-RED-LIGHTS BAR + ACTION BUTTON INSIDE GANTRY */}
+                  <div className="max-w-3xl mx-auto w-full">
+                    <div className="bg-[#14141c] border-2 border-white/15 rounded-2xl p-3 sm:p-3.5 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-3 relative overflow-hidden">
+                      <div className="flex flex-col items-center sm:items-start gap-1.5">
+                        <div className="text-[10px] font-mono uppercase text-[#8e8e9c] tracking-widest">
+                          SEMÁFORO DE LARGADA // FIA GANTRY
+                        </div>
+                        {/* 5 LED LIGHT PAIRS */}
+                        <div className="flex items-center gap-3 sm:gap-4">
+                          {[1, 2, 3, 4, 5].map((lightNum) => {
+                            const isLit = startLineStage === 'lights_count' && lightNum <= redLightsCount;
+                            const isLightsOut = startLineStage === 'lights_out';
 
-                {/* CENTER GANTRY: F1 5-RED-LIGHTS BAR & ACTION HEADLINE */}
-                <div className="my-auto py-3 text-center space-y-3 sm:space-y-4 max-w-2xl mx-auto w-full shrink-0">
-                  
-                  {/* F1 LIGHTS GANTRY FRAME */}
-                  <div className="bg-[#14141c] border-2 border-white/15 rounded-3xl p-3.5 sm:p-6 shadow-2xl space-y-3 relative overflow-hidden">
-                    <div className="text-[10px] font-mono uppercase text-[#8e8e9c] tracking-widest">
-                      SEMÁFORO DE LARGADA // GANTRY LIGHTS
-                    </div>
-
-                    {/* 5 LED LIGHT PAIRS */}
-                    <div className="flex items-center justify-center gap-2.5 sm:gap-6 py-1 sm:py-2">
-                      {[1, 2, 3, 4, 5].map((lightNum) => {
-                        const isLit = startLineStage === 'lights_count' && lightNum <= redLightsCount;
-                        const isLightsOut = startLineStage === 'lights_out';
-
-                        return (
-                          <div key={lightNum} className="flex flex-col items-center gap-1.5">
-                            <div
-                              className={`w-9 h-9 sm:w-14 sm:h-14 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${
-                                isLightsOut
-                                  ? 'bg-emerald-500 border-emerald-400 shadow-[0_0_30px_#10b981] scale-110'
-                                  : isLit
-                                  ? 'bg-[#ff003b] border-[#ff4d6d] shadow-[0_0_35px_#ff003b] scale-110'
-                                  : 'bg-[#070709] border-white/10'
-                              }`}
-                            >
+                            return (
                               <div
-                                className={`w-3.5 h-3.5 sm:w-6 sm:h-6 rounded-full ${
+                                key={lightNum}
+                                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${
                                   isLightsOut
-                                    ? 'bg-emerald-200'
+                                    ? 'bg-emerald-500 border-emerald-400 shadow-[0_0_25px_#10b981] scale-105'
                                     : isLit
-                                    ? 'bg-red-200'
-                                    : 'bg-white/5'
-                                }`}
-                              />
-                            </div>
-                            <span className="text-[9px] font-mono text-[#8e8e9c] font-bold">
-                              0{lightNum}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* STATUS CAPTION */}
-                    <div className="h-7 sm:h-8 flex items-center justify-center">
-                      {startLineStage === 'grid_intro' && (
-                        <span className="text-xs sm:text-sm font-mono text-[#e6ff55] uppercase tracking-wider font-bold">
-                          GRID ALINHADO · PRONTO PARA A LARGADA
-                        </span>
-                      )}
-                      {startLineStage === 'lights_count' && (
-                        <span className="text-xs sm:text-sm font-mono text-[#ff5f8f] uppercase tracking-wider font-bold animate-pulse">
-                          ATENÇÃO: LUZES ACENDENDO ({redLightsCount}/5)...
-                        </span>
-                      )}
-                      {startLineStage === 'lights_out' && (
-                        <span className="text-base sm:text-2xl font-display font-black italic uppercase text-[#e6ff55] tracking-widest animate-bounce">
-                          🟢 LUZES APAGADAS! LARGADA AUTÊNTICA!
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* ACTION TRIGGER BUTTON */}
-                  {startLineStage === 'grid_intro' && (
-                    <motion.button
-                      initial={{ scale: 0.95 }}
-                      animate={{ scale: [0.98, 1.02, 0.98] }}
-                      transition={{ repeat: Infinity, duration: 1.5 }}
-                      onClick={() => startLightsCountdown(racePositions, currentTrack)}
-                      className="w-full sm:w-auto px-6 py-3.5 sm:px-8 sm:py-4 bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase text-base sm:text-lg rounded-full shadow-xl shadow-[#e6ff55]/30 cursor-pointer tracking-wider flex items-center justify-center gap-2.5 mx-auto"
-                    >
-                      <Play className="w-5 h-5 fill-current" />
-                      <span>INICIAR SEQUÊNCIA DE LARGADA 🚥</span>
-                    </motion.button>
-                  )}
-                </div>
-
-                {/* STAGGERED 2-COLUMN STARTING GRID (DUAS FILEIRAS) */}
-                <div className="max-w-4xl w-full mx-auto bg-[#14141c]/80 border border-white/10 rounded-3xl p-3 sm:p-5 shadow-2xl relative overflow-hidden shrink-0">
-                  <div className="flex items-center justify-between pb-2 border-b border-white/5 mb-3 text-xs font-mono text-[#8e8e9c]">
-                    <span className="uppercase font-bold text-white flex items-center gap-2">
-                      <Flame className="w-4 h-4 text-[#ff5f8f]" />
-                      GRID DE LARGADA (DUAS FILEIRAS STAGGERED)
-                    </span>
-                    <span>{racePositions.length} CARROS ALINHADOS</span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4 max-h-[38vh] sm:max-h-[42vh] overflow-y-auto pr-1 pb-6 custom-scrollbar">
-                    {racePositions.map((car, idx) => {
-                      const isLeftCol = idx % 2 === 0;
-                      const gridPos = idx + 1;
-                      const isPlayer = car.isPlayer;
-
-                      return (
-                        <motion.div
-                          key={car.driverName}
-                          initial={{ opacity: 0, y: 35 }}
-                          animate={
-                            startLineStage === 'lights_out'
-                              ? { opacity: 0, y: -450, scale: 1.12 }
-                              : { opacity: 1, y: 0, scale: 1 }
-                          }
-                          transition={
-                            startLineStage === 'lights_out'
-                              ? { duration: 1.1, ease: [0.32, 0, 0.67, 0], delay: (idx % 2) * 0.04 }
-                              : { duration: 0.35, delay: idx * 0.04 }
-                          }
-                          className={`relative p-2.5 sm:p-3 rounded-2xl border transition-all ${
-                            isLeftCol ? 'translate-y-0' : 'translate-y-3'
-                          } ${
-                            isPlayer
-                              ? 'bg-[#1e1e2c] border-[#e6ff55] ring-2 ring-[#e6ff55]/40 shadow-[0_0_20px_rgba(230,255,85,0.25)]'
-                              : 'bg-[#070709] border-white/10'
-                          }`}
-                        >
-                          <div className="absolute right-2.5 bottom-0 font-display font-black italic text-3xl sm:text-5xl text-white/5 pointer-events-none select-none">
-                            {gridPos < 10 ? `0${gridPos}` : gridPos}
-                          </div>
-
-                          <div className="flex items-center justify-between mb-1.5 relative z-10">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span
-                                className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg font-display font-black italic text-xs flex items-center justify-center shrink-0 ${
-                                  gridPos === 1
-                                    ? 'bg-amber-400 text-black font-bold shadow-md'
-                                    : gridPos <= 3
-                                    ? 'bg-[#38bdf8] text-black font-bold'
-                                    : isPlayer
-                                    ? 'bg-[#e6ff55] text-black font-bold'
-                                    : 'bg-[#191924] text-white border border-white/10'
+                                    ? 'bg-[#ff003b] border-[#ff4d6d] shadow-[0_0_28px_#ff003b] scale-105'
+                                    : 'bg-[#070709] border-white/10'
                                 }`}
                               >
-                                P{gridPos}
-                              </span>
-                              <div className="min-w-0">
-                                <div className="text-xs font-display font-black italic uppercase text-white truncate flex items-center gap-1.5">
-                                  <span className="truncate">{car.driverName}</span>
-                                  {isPlayer && (
-                                    <span className="text-[8px] px-1.5 py-0.2 rounded bg-[#e6ff55] text-black font-mono font-bold shrink-0">
-                                      VOCÊ
-                                    </span>
+                                <div
+                                  className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full ${
+                                    isLightsOut ? 'bg-emerald-200' : isLit ? 'bg-red-200' : 'bg-white/5'
+                                  }`}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-center sm:items-end justify-center w-full sm:w-auto">
+                        {startLineStage === 'grid_intro' && (
+                          <button
+                            type="button"
+                            onClick={() => startLightsCountdown(racePositions, currentTrack)}
+                            className="w-full sm:w-auto min-h-[48px] px-6 py-3 bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase text-xs sm:text-sm rounded-2xl shadow-xl shadow-[#e6ff55]/30 cursor-pointer tracking-wider flex items-center justify-center gap-2"
+                          >
+                            <Play className="w-4 h-4 fill-current" />
+                            <span>ACENDER LUZES E LARGAR 🚥</span>
+                          </button>
+                        )}
+                        {startLineStage === 'lights_count' && (
+                          <span className="text-xs sm:text-sm font-mono text-[#ff5f8f] uppercase tracking-wider font-bold animate-pulse py-2">
+                            ATENÇÃO: LUZES ACENDENDO ({redLightsCount}/5)...
+                          </span>
+                        )}
+                        {startLineStage === 'lights_out' && (
+                          <span className="text-sm sm:text-lg font-display font-black italic uppercase text-[#e6ff55] tracking-widest py-2">
+                            🟢 LUZES APAGADAS! LARGADA!
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* SCROLLABLE VERTICAL ASPHALT STRAIGHT & 2x2 STAGGERED STARTING GRID */}
+                <div className="max-w-3xl w-full mx-auto px-2 sm:px-6 pt-3 pb-16 flex-1">
+                  <div className="flex items-center justify-between text-[11px] font-mono text-[#8e8e9c] mb-2 px-1">
+                    <span className="uppercase font-bold text-white flex items-center gap-1.5">
+                      <Flame className="w-3.5 h-3.5 text-[#ff5f8f]" />
+                      RETA DE LARGADA // ROLE PARA VER OS 20 CARROS NO GRID
+                    </span>
+                    <span className="text-[#e6ff55] font-bold">↑ Sentido da Largada</span>
+                  </div>
+
+                  {/* VERTICAL TRACK SURFACE */}
+                  <div className="relative bg-[#111218] border-x-4 border-white/10 rounded-3xl overflow-hidden shadow-[0_20px_70px_rgba(0,0,0,0.85)] py-8 px-6 sm:px-14">
+                    {/* LEFT RED/WHITE CURB (ZEBRA FIXA NA PISTA) */}
+                    <div
+                      className="absolute top-0 bottom-0 left-0 w-3 sm:w-4 pointer-events-none opacity-85"
+                      style={{
+                        backgroundImage:
+                          'repeating-linear-gradient(to bottom, #ef4444 0px, #ef4444 24px, #f8fafc 24px, #f8fafc 48px)'
+                      }}
+                    />
+
+                    {/* RIGHT RED/WHITE CURB (ZEBRA FIXA NA PISTA) */}
+                    <div
+                      className="absolute top-0 bottom-0 right-0 w-3 sm:w-4 pointer-events-none opacity-85"
+                      style={{
+                        backgroundImage:
+                          'repeating-linear-gradient(to bottom, #ef4444 0px, #ef4444 24px, #f8fafc 24px, #f8fafc 48px)'
+                      }}
+                    />
+
+                    {/* VERTICAL CENTER DASHED TRACK LINE */}
+                    <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 border-l-2 border-dashed border-white/15 pointer-events-none" />
+
+                    {/* CHECKERED START LINE AT THE TOP OF THE ASPHALT */}
+                    <div className="relative z-10 mb-8">
+                      <div
+                        className="w-full h-5 rounded-md border border-white/25 shadow-md"
+                        style={{
+                          backgroundImage:
+                            'repeating-linear-gradient(90deg, #ffffff 0px, #ffffff 16px, #09090d 16px, #09090d 32px)'
+                        }}
+                      />
+                      <div className="text-center text-[10px] font-mono uppercase tracking-[0.3em] text-white/60 mt-1 font-bold">
+                        LINHA DE LARGADA // START LINE
+                      </div>
+                    </div>
+
+                    {/* 2-COLUMN STAGGERED VERTICAL GRID (STATIONARY SLOTS, ONLY CARS ACCELERATE SMOOTHLY UPWARDS) */}
+                    <div className="relative z-20 grid grid-cols-2 gap-x-6 sm:gap-x-12 gap-y-5 overflow-visible">
+                      {racePositions.map((car, idx) => {
+                        const gridPos = idx + 1;
+                        const isPlayer = car.isPlayer;
+                        const isRightColumn = idx % 2 === 1;
+                        const teamColor = getDriverTeamColor(car.teamId);
+                        // Progressive realistic launch distance & reaction delay for each car
+                        const launchDistance = -880 - (20 - idx) * 18;
+                        const launchDelay = idx * 0.025;
+                        const lateralLineWeave = isRightColumn ? -4 : 4;
+
+                        return (
+                          <div
+                            key={car.driverName}
+                            className={`flex flex-col items-center overflow-visible ${isRightColumn ? 'mt-8 sm:mt-12' : ''}`}
+                          >
+                            {/* FIA PAINTED STARTING BOX TOP LINE (STATIONARY ON ASPHALT) */}
+                            <div
+                              className={`w-full max-w-[190px] h-3 border-t-4 border-x-2 rounded-t-sm mb-1 transition-colors ${
+                                isPlayer
+                                  ? 'border-[#e6ff55] shadow-[0_-4px_15px_rgba(230,255,85,0.45)]'
+                                  : gridPos === 1
+                                  ? 'border-amber-400/80'
+                                  : 'border-white/35'
+                              }`}
+                            />
+
+                            {/* STATIONARY GRID SLOT HUD (STAYS ON ASPHALT WHILE ONLY THE CAR LAUNCHES UPWARDS) */}
+                            <div
+                              className={`w-full max-w-[190px] rounded-2xl p-2.5 border flex flex-col items-center gap-2 relative overflow-visible transition-colors ${
+                                isPlayer
+                                  ? 'bg-[#1a1c28]/85 border-[#e6ff55]/70 ring-1 ring-[#e6ff55]/30 shadow-[0_0_24px_rgba(230,255,85,0.18)]'
+                                  : 'bg-[#090a0f]/80 border-white/10'
+                              }`}
+                            >
+                              {/* POSITION & TIRE TOP TAGS (STATIONARY) */}
+                              <div className="w-full flex items-center justify-between gap-1 relative z-10">
+                                <span
+                                  className={`px-2 py-0.5 rounded-md font-display font-black italic text-xs ${
+                                    gridPos === 1
+                                      ? 'bg-amber-400 text-black font-bold'
+                                      : gridPos <= 3
+                                      ? 'bg-[#38bdf8] text-black font-bold'
+                                      : isPlayer
+                                      ? 'bg-[#e6ff55] text-black font-bold'
+                                      : 'bg-[#191924] text-white border border-white/10'
+                                  }`}
+                                >
+                                  P{gridPos}
+                                </span>
+
+                                {isPlayer && (
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#e6ff55] text-black font-display font-black italic uppercase">
+                                    VOCÊ
+                                  </span>
+                                )}
+
+                                <span
+                                  className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full border ${getTireBadgeStyle(
+                                    car.tireCompound
+                                  )}`}
+                                >
+                                  {car.tireCompound[0]}
+                                </span>
+                              </div>
+
+                              {/* TIRE MARKS LEFT IN THE SLOT + ANIMATED CAR LAUNCHING SMOOTHLY UPWARDS */}
+                              <div className="relative h-28 sm:h-32 w-full flex items-center justify-center overflow-visible my-1">
+                                {/* Subtle painted slot number watermark on asphalt when car leaves */}
+                                <span className="text-2xl font-display font-black italic text-white/10 select-none pointer-events-none">
+                                  P{gridPos}
+                                </span>
+
+                                {/* ONLY THE CAR + EXHAUST TRAIL ACCELERATES UPWARDS */}
+                                <motion.div
+                                  initial={{ y: 14, opacity: 0 }}
+                                  animate={
+                                    startLineStage === 'lights_out'
+                                      ? {
+                                          y: [0, -14, -75, -240, -540, launchDistance],
+                                          x: [0, lateralLineWeave * 0.4, lateralLineWeave, lateralLineWeave * 0.5, 0, 0],
+                                          scale: [1, 1.02, 1.04, 1.03, 1.01, 1],
+                                          opacity: 1
+                                        }
+                                      : startLineStage === 'lights_count'
+                                      ? {
+                                          y: [0, -1.2, 0],
+                                          x: [0, 0.5, -0.5, 0],
+                                          scale: 1,
+                                          opacity: 1
+                                        }
+                                      : {
+                                          y: 0,
+                                          x: 0,
+                                          scale: 1,
+                                          opacity: 1
+                                        }
+                                  }
+                                  transition={
+                                    startLineStage === 'lights_out'
+                                      ? {
+                                          duration: 1.52,
+                                          delay: launchDelay,
+                                          ease: [0.35, 0, 0.12, 1],
+                                          times: [0, 0.12, 0.28, 0.52, 0.78, 1]
+                                        }
+                                      : startLineStage === 'lights_count'
+                                      ? {
+                                          duration: 0.16,
+                                          repeat: Infinity,
+                                          ease: 'linear'
+                                        }
+                                      : {
+                                          duration: 0.4,
+                                          delay: idx * 0.018,
+                                          ease: 'easeOut'
+                                        }
+                                  }
+                                  className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none overflow-visible"
+                                >
+                                  <div
+                                    className={`w-28 sm:w-32 h-14 sm:h-16 flex items-center justify-center shrink-0 ${
+                                      driver.category === 'kart' ? '-rotate-90' : 'rotate-90'
+                                    }`}
+                                  >
+                                    <CategoryCarVector
+                                      category={driver.category}
+                                      teamColor={teamColor}
+                                      secondaryColor="#ffffff"
+                                      helmetColor={isPlayer ? driver.helmetColor : '#facc15'}
+                                      className="w-full h-full object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.85)]"
+                                    />
+                                  </div>
+
+                                  {/* TIRE SMOKE / LAUNCH FLAME TRAIL FOLLOWING THE CAR */}
+                                  {startLineStage === 'lights_out' && (
+                                    <motion.div
+                                      initial={{ opacity: 0, scaleY: 0.5 }}
+                                      animate={{ opacity: [0.85, 0.35, 0], scaleY: [1, 2.4, 3], y: [10, 32, 48] }}
+                                      transition={{ duration: 0.65, repeat: Infinity }}
+                                      className="absolute -bottom-5 w-7 h-12 rounded-full bg-gradient-to-b from-[#e6ff55]/60 via-orange-500/35 to-transparent blur-md pointer-events-none"
+                                    />
                                   )}
+                                </motion.div>
+                              </div>
+
+                              {/* DRIVER NAME FOOTER (STATIONARY ON GRID BOX) */}
+                              <div className="w-full text-center border-t border-white/10 pt-1.5 relative z-10">
+                                <div
+                                  className={`text-xs font-display font-black italic uppercase truncate ${
+                                    isPlayer ? 'text-[#e6ff55]' : 'text-white'
+                                  }`}
+                                >
+                                  {car.driverName}
                                 </div>
-                                <div className="text-[10px] font-mono text-[#8e8e9c]">
+                                <div className="text-[10px] font-mono text-[#8e8e9c] truncate">
                                   Pneu {car.tireCompound}
                                 </div>
                               </div>
                             </div>
                           </div>
-
-                          {/* Vertical Track Slot & Mini Vector Car (Facing UP) */}
-                          <div className="relative z-10 py-2.5 bg-[#14141c]/95 rounded-xl border border-white/5 flex items-center justify-center overflow-hidden min-h-[95px] sm:min-h-[115px]">
-                            {/* Vertical Dashed Track Lane Marking */}
-                            <div className="absolute inset-y-0 left-1/2 w-0.5 border-r border-dashed border-white/10" />
-
-                            <div className={`transform transition-transform duration-300 ${driver.category === 'kart' ? '-rotate-90' : 'rotate-90'}`}>
-                              <CategoryCarVector
-                                category={driver.category}
-                                teamColor={getDriverTeamColor(car.teamId)}
-                                secondaryColor="#ffffff"
-                                helmetColor={isPlayer ? driver.helmetColor : '#facc15'}
-                                className="w-24 h-10 sm:w-32 sm:h-12 object-contain drop-shadow-[0_6px_16px_rgba(0,0,0,0.9)]"
-                              />
-                            </div>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
           
-          {/* 1. RACE HEADER BAR */}
-          <div className="flex items-center justify-between gap-3 bg-[#14141c] border border-white/10 rounded-2xl px-3.5 py-2 sm:px-4 sm:py-2.5 shrink-0 shadow-xl">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap sm:flex-nowrap">
-                <span className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 rounded-full bg-[#e6ff55] text-black font-display font-black italic uppercase shrink-0">
-                  PIT WALL LIVE
-                </span>
-                <span className="text-sm sm:text-xl font-display font-black italic uppercase text-[#e6ff55] truncate">
-                  {currentTrack.name}
-                </span>
-                {(() => {
-                  const wb = getWeatherBadge(currentTrack.weather);
-                  return (
-                    <span className={`text-[9px] sm:text-xs px-2 py-0.5 rounded-full border font-mono font-bold flex items-center gap-1 shrink-0 ${wb.badgeClass}`}>
-                      <span>{wb.icon}</span>
-                      <span>{wb.label}</span>
-                    </span>
-                  );
-                })()}
-                <span className="text-xs text-[#8e8e9c] hidden md:inline font-mono shrink-0">· {currentTrack.profileType}</span>
-              </div>
-              <div className="text-[11px] sm:text-xs font-mono text-[#8e8e9c] mt-0.5 truncate">
-                Retas {Math.round(currentTrack.straightWeight * 100)}% · Curvas {Math.round(currentTrack.cornerWeight * 100)}%
-                {currentTrack.weather === 'Chuva' && <span className="text-blue-300 ml-2 font-bold">🌧️ Pista Molhada!</span>}
-              </div>
+          {/* 1. RACE HEADER BAR + 2-PAGE VIEW SWITCHER (PÁGINA 1: COMANDOS & PISTA | PÁGINA 2: CLASSIFICAÇÃO AO VIVO) */}
+          <div className="flex flex-wrap items-center justify-between gap-2.5 bg-[#14141c] border border-white/10 rounded-2xl px-3.5 py-2 shrink-0 shadow-xl relative z-20">
+            <div className="min-w-0 flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+              <span className="text-[10px] px-2.5 py-1 rounded-full bg-[#e6ff55] text-black font-display font-black italic uppercase shrink-0">
+                PIT WALL AO VIVO
+              </span>
+              <span className="text-base sm:text-xl font-display font-black italic uppercase text-[#e6ff55] truncate">
+                {currentTrack.name}
+              </span>
+              {(() => {
+                const wb = getWeatherBadge(currentTrack.weather);
+                return (
+                  <span className={`text-xs px-2.5 py-0.5 rounded-full border font-mono font-bold flex items-center gap-1 shrink-0 ${wb.badgeClass}`}>
+                    <span>{wb.icon}</span>
+                    <span>{wb.label}</span>
+                  </span>
+                );
+              })()}
             </div>
 
-            <div className="flex items-center gap-2.5 sm:gap-4 font-mono shrink-0">
+            {/* 2-PAGE TOGGLE BAR (PÁGINA 1: COMANDOS & PISTA | PÁGINA 2: CLASSIFICAÇÃO AO VIVO) */}
+            <div className="flex items-center gap-1.5 bg-[#070709] p-1 rounded-xl border border-white/10">
               <button
-                onClick={() => setSimSpeed(prev => (prev === 1 ? 2 : 1))}
-                className={`px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-xl text-xs font-bold border cursor-pointer flex items-center gap-1.5 transition-all shadow-md ${
-                  simSpeed === 2 ? 'bg-[#e6ff55]/20 border-[#e6ff55] text-[#e6ff55]' : 'bg-[#191924] border-white/5 text-[#8e8e9c]'
+                type="button"
+                onClick={() => setRaceLeftTab('comandos')}
+                className={`min-h-[38px] py-1.5 px-3.5 rounded-lg text-xs font-display font-black italic uppercase cursor-pointer transition-all flex items-center justify-center gap-1.5 ${
+                  raceLeftTab === 'comandos'
+                    ? 'bg-[#e6ff55] text-black shadow-md'
+                    : 'text-[#8e8e9c] hover:text-white'
                 }`}
-                title="Velocidade da Simulação"
               >
-                <FastForward className="w-3.5 h-3.5" />
-                <span>{simSpeed}x</span>
+                <Zap className="w-3.5 h-3.5" />
+                <span>1. Comandos & Pista</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRaceLeftTab('radio')}
+                className={`min-h-[38px] py-1.5 px-3.5 rounded-lg text-xs font-display font-black italic uppercase cursor-pointer transition-all flex items-center justify-center gap-1.5 ${
+                  raceLeftTab === 'radio'
+                    ? 'bg-[#e6ff55] text-black shadow-md'
+                    : 'text-[#8e8e9c] hover:text-white'
+                }`}
+              >
+                <Trophy className="w-3.5 h-3.5" />
+                <span>2. Classificação (20 Carros)</span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3 sm:gap-4 font-mono shrink-0">
+              <button
+                type="button"
+                onClick={() => setSimSpeed(prev => (prev === 1 ? 2 : 1))}
+                className={`min-h-[40px] px-3.5 py-1.5 rounded-xl text-xs font-bold border cursor-pointer flex items-center gap-1.5 transition-all shadow-md ${
+                  simSpeed === 2 ? 'bg-[#e6ff55] border-[#e6ff55] text-black' : 'bg-[#191924] border-white/15 text-white hover:border-[#e6ff55]'
+                }`}
+                title="Alternar Velocidade da Corrida (1x / 2x)"
+              >
+                <FastForward className="w-4 h-4" />
+                <span>Velocidade {simSpeed}x</span>
               </button>
 
               <div className="text-right">
-                <div className="text-[9px] sm:text-[10px] text-[#8e8e9c] uppercase leading-none font-mono">Posição</div>
-                <div className="text-base sm:text-2xl font-display font-black italic text-white tabular-nums">P{playerRaceCar?.pos || '-'}</div>
+                <div className="text-[9px] text-[#8e8e9c] uppercase leading-none font-mono">Posição</div>
+                <div className="text-base sm:text-xl font-display font-black italic text-white tabular-nums leading-tight">P{playerRaceCar?.pos || '-'}</div>
               </div>
-              <div className="w-px h-6 sm:h-7 bg-white/10"></div>
+              <div className="w-px h-6 bg-white/10"></div>
               <div className="text-right">
-                <div className="text-[9px] sm:text-[10px] text-[#8e8e9c] uppercase leading-none font-mono">Voltas</div>
-                <div className="text-base sm:text-2xl font-display font-black italic text-[#e6ff55] tabular-nums">{currentLap}/{currentTrack.laps}</div>
+                <div className="text-[9px] text-[#8e8e9c] uppercase leading-none font-mono">Voltas</div>
+                <div className="text-base sm:text-xl font-display font-black italic text-[#e6ff55] tabular-nums leading-tight">{currentLap}/{currentTrack.laps}</div>
               </div>
             </div>
           </div>
 
-
-
-          {/* 2. DESKTOP 12-COLUMN PIT WALL WORKSPACE */}
-          <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-2.5 sm:gap-3 overflow-y-auto lg:overflow-hidden">
-            
-            {/* LEFT 4 COLUMNS ON DESKTOP: CIRCUIT TELEMETRY + STRATEGY DECK + MULTI-ENTRY RACE RADIO */}
-            {playerRaceCar && (
-              <div className="lg:col-span-4 flex flex-col gap-2.5 sm:gap-3 min-h-0 overflow-y-auto lg:overflow-visible">
-                {/* Circuit Map & Player Telemetry Card */}
-                <div className="bg-[#14141c] border border-white/10 rounded-2xl p-3 flex flex-col justify-between shadow-lg shrink-0">
-                  <div className="flex items-center justify-between text-xs font-mono text-[#8e8e9c] mb-1">
-                    <span className="uppercase font-bold text-white">GPS DO CIRCUITO</span>
-                    <span>Última: <strong className="text-[#e6ff55]">{playerRaceCar.lastLapTime}</strong></span>
+          {/* 2. PIT WALL TWO-PAGE WORKSPACE (SEM RÁDIO, CLASSIFICAÇÃO NA SEGUNDA PÁGINA) */}
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            {raceLeftTab === 'comandos' && playerRaceCar ? (
+              /* PÁGINA 1: COMANDOS DE ESTRATÉGIA, BOX & TELEMETRIA DE PISTA EM TELA CHEIA */
+              <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3 overflow-y-auto lg:overflow-hidden">
+                {/* LEFT 6 COLUMNS: GPS DO CIRCUITO & TELEMETRIA DO PILOTO */}
+                <div className="lg:col-span-6 bg-[#14141c] border border-white/10 rounded-2xl p-4 flex flex-col justify-between gap-3 shadow-lg">
+                  <div className="flex items-center justify-between text-xs font-mono text-[#8e8e9c]">
+                    <span className="uppercase font-display font-black italic text-sm text-white flex items-center gap-2">
+                      <Activity className="w-4 h-4 text-[#e6ff55]" />
+                      GPS DO CIRCUITO & TELEMETRIA AO VIVO
+                    </span>
+                    <span>Última Volta: <strong className="text-[#e6ff55]">{playerRaceCar.lastLapTime}</strong></span>
                   </div>
-                  <div className="bg-[#070709] rounded-xl p-1.5 border border-white/5 flex items-center justify-center">
+
+                  <div className="flex-1 min-h-[140px] bg-[#070709] rounded-2xl p-4 border border-white/5 flex flex-col items-center justify-center gap-3">
                     <TrackMapVector 
                       svgPath={currentTrack.svgPath} 
                       accentColor={currentTeam.color} 
                       isRacing={isRacing}
                       playerColor="#e6ff55"
-                      className="w-full h-20 sm:h-28 lg:h-32" 
+                      className="w-full h-28 sm:h-36" 
                     />
+                    <div className="flex flex-wrap items-center justify-center gap-3 text-xs font-mono text-[#8e8e9c]">
+                      <span>Posição Atual: <strong className="text-[#e6ff55]">P{playerRaceCar.pos}</strong></span>
+                      <span>·</span>
+                      <span>Diferença p/ Líder: <strong className="text-white">{playerRaceCar.gap}</strong></span>
+                      {playerRaceCar.statusTag && (
+                        <>
+                          <span>·</span>
+                          <span className="px-2 py-0.5 rounded-full bg-[#191924] text-[#e6ff55] border border-white/10 font-bold">
+                            {playerRaceCar.statusTag}
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-1.5 pt-2 text-center font-mono text-xs">
-                    <div className="bg-[#070709] p-1.5 rounded-xl border border-white/5">
-                      <div className="text-[9px] text-[#8e8e9c] uppercase">Melhor Volta</div>
-                      <div className="text-xs font-bold text-purple-300 tabular-nums">{playerRaceCar.bestLapTimeStr || playerRaceCar.lastLapTime}</div>
+
+                  <div className="grid grid-cols-4 gap-2 text-center font-mono text-xs shrink-0">
+                    <div className="bg-[#070709] p-2.5 rounded-xl border border-white/5">
+                      <div className="text-[10px] text-[#8e8e9c] uppercase">Sua Posição</div>
+                      <div className="text-base font-display font-black italic text-[#e6ff55] tabular-nums mt-0.5">P{playerRaceCar.pos}</div>
                     </div>
-                    <div className="bg-[#070709] p-1.5 rounded-xl border border-white/5">
-                      <div className="text-[9px] text-[#8e8e9c] uppercase">Ultrapassagens</div>
-                      <div className="text-xs font-bold text-[#38bdf8] tabular-nums">{playerRaceCar.overtakesCount || 0}</div>
+                    <div className="bg-[#070709] p-2.5 rounded-xl border border-white/5">
+                      <div className="text-[10px] text-[#8e8e9c] uppercase">Melhor Volta</div>
+                      <div className="text-xs sm:text-sm font-bold text-purple-300 tabular-nums mt-1">{playerRaceCar.bestLapTimeStr || playerRaceCar.lastLapTime}</div>
                     </div>
-                    <div className="bg-[#070709] p-1.5 rounded-xl border border-white/5">
-                      <div className="text-[9px] text-[#8e8e9c] uppercase">Paradas Box</div>
-                      <div className="text-xs font-bold text-white tabular-nums">{playerRaceCar.pitStops} PIT</div>
+                    <div className="bg-[#070709] p-2.5 rounded-xl border border-white/5">
+                      <div className="text-[10px] text-[#8e8e9c] uppercase">Ultrapassagens</div>
+                      <div className="text-sm font-bold text-[#38bdf8] tabular-nums mt-0.5">{playerRaceCar.overtakesCount || 0}</div>
+                    </div>
+                    <div className="bg-[#070709] p-2.5 rounded-xl border border-white/5">
+                      <div className="text-[10px] text-[#8e8e9c] uppercase">Paradas Box</div>
+                      <div className="text-sm font-bold text-white tabular-nums mt-0.5">{playerRaceCar.pitStops} PIT</div>
                     </div>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setRaceLeftTab('radio')}
+                    className="w-full min-h-[42px] py-2 bg-[#191924] hover:bg-[#252535] text-[#e6ff55] font-display font-black italic uppercase text-xs rounded-xl border border-[#e6ff55]/30 cursor-pointer flex items-center justify-center gap-2 shrink-0"
+                  >
+                    <Trophy className="w-4 h-4" />
+                    <span>Ver Página 2: Classificação Ao Vivo dos 20 Carros →</span>
+                  </button>
                 </div>
 
-                {/* Tire Health & Pace Strategy Deck */}
-                <div className="bg-[#14141c] border border-white/10 rounded-2xl p-3 flex flex-col justify-between gap-2.5 shadow-lg shrink-0">
-                  <div className="space-y-1">
+                {/* RIGHT 6 COLUMNS: CENTRAL DE ESTRATÉGIA, RITMO & CHAMADA DE BOX */}
+                <div className="lg:col-span-6 bg-[#14141c] border border-white/10 rounded-2xl p-4 flex flex-col justify-between gap-3.5 shadow-lg">
+                  <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                    <span className="text-sm font-display font-black italic uppercase text-white flex items-center gap-2">
+                      <Wrench className="w-4 h-4 text-[#e6ff55]" />
+                      COMANDOS DE CORRIDA & ESTRATÉGIA DE BOX
+                    </span>
+                    <span className="text-xs font-mono text-[#8e8e9c]">Volta {currentLap} de {currentTrack.laps}</span>
+                  </div>
+
+                  {/* Tire Health Bar */}
+                  <div className="bg-[#070709] p-3.5 rounded-2xl border border-white/5 space-y-2">
                     <div className="flex items-center justify-between text-xs font-mono">
                       <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded-full border text-xs font-bold ${getTireBadgeStyle(playerRaceCar.tireCompound)}`}>
+                        <span className={`px-3 py-0.5 rounded-full border text-xs font-bold ${getTireBadgeStyle(playerRaceCar.tireCompound)}`}>
                           Pneu {playerRaceCar.tireCompound}
                         </span>
-                        <span className="text-[#8e8e9c] text-[10px] sm:text-[11px]">Desgaste</span>
+                        <span className="text-[#8e8e9c]">Desgaste em Pista</span>
                       </div>
-                      <span className={`text-xs sm:text-sm font-bold ${playerRaceCar.tireHealth <= 32 ? 'text-[#ff5f8f]' : 'text-[#e6ff55]'}`}>
+                      <span className={`text-base font-bold ${playerRaceCar.tireHealth <= 32 ? 'text-[#ff5f8f]' : 'text-[#e6ff55]'}`}>
                         {playerRaceCar.tireHealth}%
                       </span>
                     </div>
-                    <div className="w-full h-2.5 bg-[#070709] rounded-full overflow-hidden border border-white/5">
+                    <div className="w-full h-3 bg-[#14141c] rounded-full overflow-hidden border border-white/5">
                       <div 
                         className={`h-full transition-all duration-300 ${
                           playerRaceCar.tireHealth > 55 ? 'bg-[#e6ff55]' : playerRaceCar.tireHealth > 30 ? 'bg-amber-400' : 'bg-[#ff5f8f]'
@@ -4758,9 +4941,11 @@ export default function App() {
                   </div>
 
                   {/* Driving Pace Buttons */}
-                  <div className="space-y-1">
-                    <div className="text-[9px] font-mono uppercase text-[#8e8e9c]">Modo de Ritmo (Motor & Pneus)</div>
-                    <div className="grid grid-cols-3 gap-1.5">
+                  <div className="space-y-2">
+                    <div className="text-xs font-mono uppercase text-[#8e8e9c] font-bold">
+                      RITMO DE PILOTAGEM (MOTOR & PNEUS)
+                    </div>
+                    <div className="grid grid-cols-3 gap-2.5">
                       {([
                         { id: 'conservador', label: 'Poupar' },
                         { id: 'equilibrado', label: 'Normal' },
@@ -4768,11 +4953,12 @@ export default function App() {
                       ] as const).map(st => (
                         <button
                           key={st.id}
+                          type="button"
                           onClick={() => setDrivingStyle(st.id)}
-                          className={`py-1.5 rounded-xl text-xs font-display font-black italic uppercase cursor-pointer border transition-all ${
+                          className={`min-h-[48px] py-2.5 rounded-xl text-xs sm:text-sm font-display font-black italic uppercase cursor-pointer border transition-all ${
                             drivingStyle === st.id 
                               ? 'bg-[#e6ff55] text-black border-[#e6ff55] shadow-md shadow-[#e6ff55]/20' 
-                              : 'bg-[#191924] border-white/5 text-[#8e8e9c] hover:text-white'
+                              : 'bg-[#191924] border-white/10 text-[#8e8e9c] hover:text-white'
                           }`}
                         >
                           {st.label}
@@ -4781,516 +4967,374 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Pit Stop Controls */}
-                  <div className="grid grid-cols-2 gap-2 pt-0.5">
-                    <button
-                      onClick={() => setAutoPitMode(prev => (prev === 'conservador' ? 'arriscado' : 'conservador'))}
-                      className={`py-1.5 px-2.5 rounded-xl text-xs font-mono font-bold cursor-pointer border flex items-center justify-center gap-1 transition-all ${
-                        autoPitMode === 'conservador'
-                          ? 'bg-[#e6ff55]/15 border-[#e6ff55]/40 text-[#e6ff55]'
-                          : 'bg-[#ff5f8f]/15 border-[#ff5f8f]/40 text-[#ff5f8f]'
-                      }`}
-                    >
-                      {autoPitMode === 'conservador' ? <Shield className="w-3.5 h-3.5" /> : <Flame className="w-3.5 h-3.5" />}
-                      <span>Box: {autoPitMode === 'conservador' ? 'Seguro' : 'Rápido'}</span>
-                    </button>
+                  {/* Pit Stop Mode & Manual Pit Call */}
+                  <div className="space-y-2.5">
+                    <div className="text-xs font-mono uppercase text-[#8e8e9c] font-bold">
+                      POSTURA DOS MECÂNICOS NO PIT STOP
+                    </div>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setAutoPitMode('conservador')}
+                        className={`min-h-[46px] py-2.5 px-3 rounded-xl text-xs font-mono font-bold cursor-pointer border flex items-center justify-center gap-2 transition-all ${
+                          autoPitMode === 'conservador'
+                            ? 'bg-[#e6ff55]/20 border-[#e6ff55] text-[#e6ff55]'
+                            : 'bg-[#191924] border-white/10 text-[#8e8e9c] hover:text-white'
+                        }`}
+                      >
+                        <Shield className="w-4 h-4" />
+                        <span>Box Seguro (3.0s)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setAutoPitMode('arriscado')}
+                        className={`min-h-[46px] py-2.5 px-3 rounded-xl text-xs font-mono font-bold cursor-pointer border flex items-center justify-center gap-2 transition-all ${
+                          autoPitMode === 'arriscado'
+                            ? 'bg-[#ff5f8f]/20 border-[#ff5f8f] text-[#ff5f8f]'
+                            : 'bg-[#191924] border-white/10 text-[#8e8e9c] hover:text-white'
+                        }`}
+                      >
+                        <Flame className="w-4 h-4" />
+                        <span>Box Rápido (1.8s)</span>
+                      </button>
+                    </div>
 
                     <button
+                      type="button"
                       onClick={triggerManualPitNow}
-                      className={`py-1.5 px-2.5 rounded-xl text-xs font-mono font-bold cursor-pointer border transition-all ${
+                      className={`w-full min-h-[52px] py-3 px-4 rounded-2xl text-xs sm:text-sm font-display font-black italic uppercase cursor-pointer border transition-all flex items-center justify-center gap-2 ${
                         forcePitNextLap
-                          ? 'bg-[#ff5f8f] border-white text-black font-black animate-pulse'
-                          : 'bg-[#191924] border-white/10 text-white hover:border-white/20'
+                          ? 'bg-[#ff5f8f] border-white text-black animate-pulse shadow-lg shadow-[#ff5f8f]/30'
+                          : 'bg-[#1e1e2d] hover:bg-[#e6ff55] hover:text-black border-[#e6ff55]/50 text-[#e6ff55]'
                       }`}
                     >
-                      {forcePitNextLap ? 'Box Agendado' : 'Chamar Box Agora'}
+                      <Wrench className="w-4 h-4" />
+                      <span>{forcePitNextLap ? 'BOX AGENDADO P/ PRÓXIMA VOLTA (CANCELAR)' : 'CHAMAR BOX AGORA (PRÓX. VOLTA)'}</span>
                     </button>
                   </div>
                 </div>
-
-                {/* Desktop Live Race Radio Feed Log with Overtake Struggle Highlights */}
-                <div className="hidden lg:flex flex-1 min-h-[140px] bg-[#14141c] border border-white/10 rounded-2xl p-3 flex-col shadow-lg overflow-hidden">
-                  <div className="flex items-center justify-between text-xs font-display font-black italic uppercase text-[#e6ff55] mb-2 shrink-0 border-b border-white/5 pb-1.5">
-                    <div className="flex items-center gap-2">
-                      <Radio className="w-4 h-4 animate-pulse text-[#e6ff55]" />
-                      <span>RÁDIO DA CORRIDA // FEED AO VIVO</span>
-                    </div>
-                    <span className="text-[10px] font-mono text-[#8e8e9c] font-normal">
-                      ULTIMAS VOLTAS
+              </div>
+            ) : (
+              /* PÁGINA 2: CLASSIFICAÇÃO AO VIVO DOS 20 CARROS EM TELA CHEIA */
+              <div className="flex-1 min-h-0 bg-[#14141c] border border-white/10 rounded-2xl p-3.5 overflow-hidden shadow-2xl flex flex-col justify-between gap-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-white/5 shrink-0 relative z-20">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Trophy className="w-4 h-4 text-[#e6ff55] shrink-0" />
+                    <span className="text-xs sm:text-sm font-display font-black italic uppercase text-white truncate">
+                      CLASSIFICAÇÃO AO VIVO (20 CARROS)
                     </span>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto space-y-2 pr-1 font-mono text-xs custom-scrollbar">
-                    {raceEventsLog.length > 0 ? (
-                      raceEventsLog.slice(0, 8).map((ev, i) => {
-                        const isOvertake = ev.type === 'overtake';
-                        const isPlayer = ev.isPlayerInvolved;
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 bg-[#070709] p-1 rounded-xl border border-white/10 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setRaceTowerCols(2)}
+                        className={`min-h-[32px] px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold cursor-pointer transition-all ${
+                          raceTowerCols === 2 ? 'bg-[#e6ff55] text-black' : 'text-[#8e8e9c] hover:text-white'
+                        }`}
+                      >
+                        2 Colunas (Amplo)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRaceTowerCols(1)}
+                        className={`min-h-[32px] px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold cursor-pointer transition-all ${
+                          raceTowerCols === 1 ? 'bg-[#e6ff55] text-black' : 'text-[#8e8e9c] hover:text-white'
+                        }`}
+                      >
+                        Lista Vertical
+                      </button>
+                    </div>
 
-                        if (isOvertake) {
-                          return (
-                            <motion.div
-                              key={i}
-                              initial={{ opacity: 0, scale: 0.94, x: -12 }}
-                              animate={{ opacity: 1, scale: 1, x: 0 }}
-                              transition={{ type: "spring", stiffness: 420, damping: 26 }}
-                              className={`p-2.5 rounded-xl border relative overflow-hidden transition-all shadow-md ${
-                                isPlayer
-                                  ? 'bg-gradient-to-r from-[#ff003b]/30 via-[#2a1a24] to-[#14141c] border-[#e6ff55] ring-1 ring-[#e6ff55]/60 shadow-[0_0_20px_rgba(230,255,85,0.25)]'
-                                  : 'bg-gradient-to-r from-amber-500/20 via-[#191924] to-[#070709] border-amber-500/50 text-white'
-                              }`}
-                            >
-                              {/* Background ambient flame glow */}
-                              <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-[#e6ff55]/10 rounded-full blur-xl pointer-events-none" />
-
-                              <div className="flex items-center justify-between gap-2 mb-1">
-                                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#e6ff55]">
-                                  <Swords className="w-3.5 h-3.5 text-[#ff5f8f] animate-pulse" />
-                                  <span>[V{ev.lap}] LUTA POR POSIÇÃO</span>
-                                </div>
-                                {ev.newPosition && (
-                                  <span className="text-[10px] font-display font-black italic px-2 py-0.5 rounded bg-[#e6ff55] text-black shadow-sm">
-                                    P{ev.newPosition}
-                                  </span>
-                                )}
-                              </div>
-
-                              <div className="text-xs font-bold text-white leading-snug flex items-start gap-1.5">
-                                <Flame className="w-4 h-4 text-[#e6ff55] shrink-0 mt-0.5" />
-                                <span>{ev.description}</span>
-                              </div>
-                            </motion.div>
-                          );
-                        }
-
-                        return (
-                          <div
-                            key={i}
-                            className={`p-1.5 px-2.5 rounded-xl border transition-colors ${
-                              i === 0
-                                ? 'bg-[#1e1e2c] border-[#e6ff55]/40 text-white'
-                                : 'bg-[#070709] border-white/5 text-[#8e8e9c]'
-                            }`}
-                          >
-                            <span className="text-[#e6ff55] font-bold mr-1.5">[V{ev.lap}]</span>
-                            <span>{ev.description}</span>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="text-[#8e8e9c] p-2 font-mono text-xs">
-                        Luzes verdes! Corrida em andamento...
-                      </div>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setRaceLeftTab('comandos')}
+                      className="min-h-[34px] px-3 py-1 bg-[#191924] hover:bg-[#252535] text-[#e6ff55] font-display font-black italic uppercase text-xs rounded-xl border border-[#e6ff55]/30 cursor-pointer shrink-0"
+                    >
+                      ← Voltar p/ Comandos
+                    </button>
                   </div>
+                </div>
+
+                <div className={`flex-1 min-h-0 grid ${raceTowerCols === 2 ? 'grid-cols-1 md:grid-cols-2 gap-1.5 content-between' : 'grid-cols-1 gap-1'} overflow-y-auto font-mono custom-scrollbar pr-0.5`}>
+                  {racePositions.map((car) => {
+                    const carTeam = TEAMS.find(t => t.id === car.teamId);
+                    const tireColor = car.tireHealth > 55 ? 'bg-[#e6ff55]' : car.tireHealth > 30 ? 'bg-amber-400' : 'bg-[#ff5f8f]';
+                    const posBadgeStyle = car.pos === 1 
+                      ? 'bg-[#e6ff55] text-black font-black' 
+                      : car.pos === 2 
+                      ? 'bg-[#38bdf8] text-black font-bold' 
+                      : car.pos === 3 
+                      ? 'bg-[#ff5f8f] text-black font-bold' 
+                      : 'bg-[#191924] text-[#8e8e9c] font-medium';
+
+                    const isOvertakingCar = car.statusTag?.startsWith('⬆️');
+
+                    return (
+                      <div 
+                        key={car.driverName}
+                        className={`px-3 py-1.5 rounded-xl border flex items-center justify-between gap-2 text-xs transition-all min-h-0 ${
+                          isOvertakingCar
+                            ? 'bg-gradient-to-r from-[#1e1e2c] via-[#2a1a24] to-[#14141c] border-[#e6ff55] text-white font-bold'
+                            : car.isPlayer 
+                            ? 'bg-[#1e1e2c] border-[#e6ff55] text-white font-bold ring-1 ring-[#e6ff55]/40' 
+                            : 'bg-[#070709] border-white/5 text-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`w-7 h-5 rounded-md flex items-center justify-center text-xs shrink-0 tabular-nums ${posBadgeStyle}`}>
+                            P{car.pos}
+                          </span>
+                          <div className="w-2 h-3.5 rounded-full shrink-0" style={{ backgroundColor: carTeam?.color || '#64748b' }}></div>
+                          <span className={`truncate font-semibold ${car.isPlayer ? 'text-[#e6ff55]' : 'text-white'}`}>
+                            {car.driverName}
+                          </span>
+                          {car.isPlayer && (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-[#e6ff55] text-black font-display font-black italic uppercase shrink-0">
+                              VOCÊ
+                            </span>
+                          )}
+                          {car.statusTag && (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-[#191924] text-[#e6ff55] shrink-0 border border-white/10 font-bold">
+                              {car.statusTag}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0 tabular-nums text-xs">
+                          {car.pitStops > 0 && (
+                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#191924] text-[#38bdf8] font-bold">
+                              {car.pitStops}P
+                            </span>
+                          )}
+                          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold border ${getTireBadgeStyle(car.tireCompound)}`}>
+                            {car.tireCompound[0]}
+                          </span>
+                          <div className="w-12 h-2 bg-[#14141c] rounded-full overflow-hidden border border-white/5">
+                            <div className={`h-full ${tireColor}`} style={{ width: `${car.tireHealth}%` }}></div>
+                          </div>
+                          <span className="text-slate-200 font-mono font-bold w-12 text-right text-xs">{car.gap}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
-
-            {/* RIGHT 8 COLUMNS ON DESKTOP: FULL 20-CAR TIMING TOWER */}
-            <div className="lg:col-span-8 flex-1 min-h-[280px] bg-[#14141c] border border-white/10 rounded-2xl p-2.5 sm:p-4 overflow-y-auto shadow-2xl flex flex-col">
-              {/* Desktop Table Header */}
-              <div className="hidden sm:flex items-center justify-between px-3 pb-2 mb-1.5 border-b border-white/5 text-[10px] font-mono uppercase text-[#8e8e9c] shrink-0">
-                <span>Posição / Piloto / Equipe</span>
-                <div className="flex items-center gap-5">
-                  <span className="hidden md:inline">Melhor Volta</span>
-                  <span>Paradas</span>
-                  <span>Pneu & Desgaste</span>
-                  <span className="w-16 text-right">Intervalo</span>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1.5 font-mono">
-                {racePositions.map((car) => {
-                  const carTeam = TEAMS.find(t => t.id === car.teamId);
-                  const tireColor = car.tireHealth > 55 ? 'bg-[#e6ff55]' : car.tireHealth > 30 ? 'bg-amber-400' : 'bg-[#ff5f8f]';
-                  const posBadgeStyle = car.pos === 1 
-                    ? 'bg-[#e6ff55] text-black font-black' 
-                    : car.pos === 2 
-                    ? 'bg-[#38bdf8] text-black font-bold' 
-                    : car.pos === 3 
-                    ? 'bg-[#ff5f8f] text-black font-bold' 
-                    : 'bg-[#191924] text-[#8e8e9c] font-medium';
-
-                  const isOvertakingCar = car.statusTag?.startsWith('⬆️');
-                  const gapNum = parseFloat(car.gap.replace('+', '').replace('s', '')) || 0;
-                  const isWheelToWheelBattle = car.pos > 1 && gapNum > 0 && gapNum <= 0.35;
-
-                  return (
-                    <motion.div 
-                      key={car.driverName}
-                      layout
-                      transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                      className={`px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl border flex items-center justify-between gap-2 text-xs sm:text-sm transition-all ${
-                        isOvertakingCar
-                          ? 'bg-gradient-to-r from-[#1e1e2c] via-[#2a1a24] to-[#14141c] border-[#e6ff55] text-white font-bold shadow-[0_0_20px_rgba(230,255,85,0.3)] ring-2 ring-[#e6ff55]/60'
-                          : car.isPlayer 
-                          ? 'bg-[#1e1e2c] border-[#e6ff55] text-white font-bold shadow-lg ring-1 ring-[#e6ff55]/40' 
-                          : 'bg-[#070709] border-white/5 text-slate-300'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-                        <span className={`w-6 h-5 sm:w-8 sm:h-7 rounded-lg flex items-center justify-center text-xs sm:text-sm shrink-0 tabular-nums ${posBadgeStyle}`}>
-                          P{car.pos}
-                        </span>
-                        <div className="w-2 h-3.5 sm:h-4 rounded-full shrink-0" style={{ backgroundColor: carTeam?.color || '#64748b' }}></div>
-                        <span className="truncate font-semibold text-white">{car.driverName}</span>
-                        <span className="text-[10px] text-[#8e8e9c] hidden xl:inline truncate">
-                          ({carTeam?.shortName})
-                        </span>
-                        {car.isPlayer && (
-                          <span className="text-[8px] sm:text-[9px] px-1.5 sm:px-2 py-0.5 rounded-full bg-[#e6ff55] text-black font-display font-black italic uppercase shrink-0 shadow-sm">
-                            VOCÊ
-                          </span>
-                        )}
-                        {isOvertakingCar && (
-                          <motion.span
-                            initial={{ scale: 0.8 }}
-                            animate={{ scale: [1, 1.1, 1] }}
-                            transition={{ repeat: Infinity, duration: 1.2 }}
-                            className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-[#e6ff55] text-black shrink-0 font-display font-black italic uppercase shadow-md flex items-center gap-1"
-                          >
-                            <Flame className="w-3 h-3 fill-current" />
-                            <span>{car.statusTag}</span>
-                          </motion.span>
-                        )}
-                        {!isOvertakingCar && isWheelToWheelBattle && (
-                          <span className="text-[8px] sm:text-[9px] px-1.5 py-0.5 rounded-full bg-[#ff5f8f]/20 text-[#ff5f8f] shrink-0 border border-[#ff5f8f]/40 font-mono font-bold flex items-center gap-1 animate-pulse">
-                            <Swords className="w-2.5 h-2.5" />
-                            <span>DUELO</span>
-                          </span>
-                        )}
-                        {!isOvertakingCar && !isWheelToWheelBattle && car.statusTag && (
-                          <span className="text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full bg-[#191924] text-[#e6ff55] shrink-0 border border-white/10 font-bold">
-                            {car.statusTag}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2 sm:gap-4 shrink-0 tabular-nums text-xs">
-                        {car.bestLapTimeStr && (
-                          <span className="text-[10px] sm:text-[11px] text-purple-300/90 hidden md:inline font-mono">
-                            {car.bestLapTimeStr}
-                          </span>
-                        )}
-                        {car.pitStops > 0 && (
-                          <span className="text-[9px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full bg-[#191924] text-[#38bdf8] border border-white/5 hidden xs:inline font-bold">
-                            {car.pitStops} PIT
-                          </span>
-                        )}
-                        <span className={`px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-xs font-bold border ${getTireBadgeStyle(car.tireCompound)}`}>
-                          {car.tireCompound[0]}
-                        </span>
-                        <div className="w-10 sm:w-20 h-1.5 sm:h-2 bg-[#070709] rounded-full overflow-hidden border border-white/5">
-                          <div className={`h-full ${tireColor}`} style={{ width: `${car.tireHealth}%` }}></div>
-                        </div>
-                        <span className="text-slate-200 font-mono font-bold w-14 sm:w-16 text-right text-xs">{car.gap}</span>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* 3. MOBILE / COMPACT RADIO FOOTER (HIDDEN ON LARGE DESKTOP SINCE LEFT PANEL HAS MULTI-LINE LOG) */}
-          <div className="lg:hidden bg-[#14141c] border border-white/10 rounded-2xl px-3 py-1.5 sm:px-4 sm:py-2 flex items-center justify-between gap-3 text-xs sm:text-sm shrink-0 shadow-xl">
-            <div className="truncate text-slate-100 flex items-center gap-2">
-              <Radio className="w-3.5 h-3.5 text-[#e6ff55] shrink-0 animate-pulse" />
-              {raceEventsLog[0] ? (
-                <>
-                  <span className="text-[#e6ff55] font-mono font-bold">[V{raceEventsLog[0].lap}]</span>
-                  <span className="truncate">{raceEventsLog[0].description}</span>
-                </>
-              ) : (
-                <span className="text-[#8e8e9c]">Luzes verdes! Corrida em andamento...</span>
-              )}
-            </div>
           </div>
 
         </div>
       )}
 
-      {/* POST-RACE RESULT MODAL WITH TOP 3 PODIUM (SEQUENTIAL REVEAL & METALLIC SHINE TROPHIES) */}
+      {/* POST-RACE RESULT MODAL WITH 2-IN-1 TOGGLE (PÓDIO & DESTAQUES vs FINANÇAS & METAS) */}
       {gameState === 'result' && postRaceResult && (
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.4 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/92 backdrop-blur-xl overflow-y-auto"
+          transition={{ duration: 0.3 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/92 backdrop-blur-xl overflow-hidden"
         >
-          {/* Ambient Gold Radial Glow Effect in Background */}
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#e6ff55]/15 via-black/80 to-black pointer-events-none" />
 
           <motion.div 
-            initial={{ scale: 0.85, opacity: 0, y: 40 }}
+            initial={{ scale: 0.94, opacity: 0, y: 15 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
-            transition={{ type: "spring", damping: 24, stiffness: 280, delay: 0.1 }}
-            className="max-w-xl w-full bg-[#14141c] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-[0_0_60px_rgba(0,0,0,0.9)] text-center my-auto space-y-4 relative z-10 overflow-hidden"
+            className="max-w-2xl w-full max-h-[96vh] bg-[#14141c] border border-white/10 rounded-3xl p-4 sm:p-6 shadow-[0_0_60px_rgba(0,0,0,0.9)] text-center my-auto flex flex-col justify-between gap-3 relative z-10 overflow-hidden"
           >
-            {/* Header Title with Shine Badge */}
-            <motion.div
-              initial={{ opacity: 0, y: -15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.4 }}
-            >
-              <span className="text-xs font-mono uppercase tracking-widest text-[#e6ff55] font-bold px-3 py-1 rounded-full bg-[#e6ff55]/10 border border-[#e6ff55]/30 inline-block mb-1 shadow-sm">
-                🏆 CERIMÔNIA DO PÓDIO OFICIAL 🏆
-              </span>
-              <h3 className="text-2xl sm:text-3xl font-display font-black italic uppercase text-white leading-tight">
-                {currentTrack.name}
-              </h3>
-            </motion.div>
+            {/* Header + 2-in-1 Sub-View Toggle */}
+            <div className="space-y-2.5 shrink-0 relative z-20">
+              <div>
+                <span className="text-[10px] font-mono uppercase tracking-widest text-[#e6ff55] font-bold px-3 py-0.5 rounded-full bg-[#e6ff55]/10 border border-[#e6ff55]/30 inline-block mb-1">
+                  🏆 RESULTADO OFICIAL DO GP 🏆
+                </span>
+                <h3 className="text-xl sm:text-2xl font-display font-black italic uppercase text-white leading-tight truncate">
+                  {currentTrack.name}
+                </h3>
+              </div>
 
-            {/* VISUAL TOP 3 PODIUM WITH SEQUENTIAL REVEAL (3rd -> 2nd -> 1st) AND METALLIC SHINE */}
-            <div className="grid grid-cols-3 gap-3 items-end pt-3 px-2">
-              {/* 2nd PLACE (P2 - SILVER) - Appears 2nd at delay: 0.65s */}
-              {postRaceResult.podium[1] && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 35, scale: 0.8 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ delay: 0.65, type: "spring", stiffness: 220, damping: 20 }}
-                  className="flex flex-col items-center"
+              <div className="flex items-center gap-2 bg-[#070709] p-1.5 rounded-2xl border border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setResultViewMode('podio')}
+                  className={`flex-1 min-h-[40px] py-2 px-3 rounded-xl text-xs font-display font-black italic uppercase cursor-pointer transition-all flex items-center justify-center gap-2 ${
+                    resultViewMode === 'podio'
+                      ? 'bg-[#e6ff55] text-black shadow-md'
+                      : 'text-[#8e8e9c] hover:text-white'
+                  }`}
                 >
-                  <Trophy className="w-7 h-7 text-[#38bdf8] filter drop-shadow-[0_0_12px_rgba(56,189,248,0.8)] mb-1" />
-                  <div className="text-xs font-display font-black italic uppercase text-white truncate max-w-full mb-0.5">
-                    {postRaceResult.podium[1].driverName}
-                  </div>
-                  <div className="text-[10px] font-mono text-[#38bdf8] font-bold mb-2">+18 pts</div>
-                  
-                  {/* Silver Metallic Step Pillar */}
-                  <div className="w-full h-24 bg-gradient-to-b from-[#182838] via-[#121c28] to-[#0d121b] border-t-4 border-[#38bdf8] shadow-[0_0_20px_rgba(56,189,248,0.3)] rounded-t-2xl flex flex-col items-center justify-center p-2 relative overflow-hidden">
-                    {/* Metallic Sheen Sweep */}
-                    <motion.div 
-                      animate={{ x: ['-150%', '250%'] }} 
-                      transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut", repeatDelay: 1.0 }} 
-                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent transform -skew-x-12 pointer-events-none" 
-                    />
-                    <span className="text-2xl font-display font-black italic text-[#38bdf8]">2º</span>
-                    <span className="text-[9px] font-mono text-slate-300 uppercase tracking-widest mt-0.5">PRATA</span>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* 1st PLACE (P1 - GOLD CHAMPION) - Appears Last at delay: 1.0s with Celebration Glow */}
-              {postRaceResult.podium[0] && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 45, scale: 0.6 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ delay: 1.0, type: "spring", stiffness: 200, damping: 18 }}
-                  className="flex flex-col items-center relative z-10"
+                  <Trophy className="w-4 h-4" />
+                  <span>Pódio & Destaques</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setResultViewMode('financas_metas')}
+                  className={`flex-1 min-h-[40px] py-2 px-3 rounded-xl text-xs font-display font-black italic uppercase cursor-pointer transition-all flex items-center justify-center gap-2 ${
+                    resultViewMode === 'financas_metas'
+                      ? 'bg-[#e6ff55] text-black shadow-md'
+                      : 'text-[#8e8e9c] hover:text-white'
+                  }`}
                 >
-                  <motion.div 
-                    animate={{ rotate: [-3, 3, -3], scale: [1, 1.08, 1] }} 
-                    transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
-                  >
-                    <Trophy className="w-9 h-9 text-[#e6ff55] filter drop-shadow-[0_0_20px_rgba(230,255,85,0.9)] mb-1" />
-                  </motion.div>
-                  <div className="text-xs sm:text-sm font-display font-black italic uppercase text-[#e6ff55] truncate max-w-full mb-0.5 tracking-wide">
-                    {postRaceResult.podium[0].driverName}
-                  </div>
-                  <div className="text-[11px] font-mono text-[#e6ff55] font-bold mb-2">+25 pts</div>
-                  
-                  {/* Gold Champion Step Pillar */}
-                  <div className="w-full h-36 bg-gradient-to-b from-[#2e3318] via-[#1f2412] to-[#12140b] border-t-4 border-[#e6ff55] shadow-[0_0_30px_rgba(230,255,85,0.4)] rounded-t-2xl flex flex-col items-center justify-center p-2 relative overflow-hidden">
-                    {/* Intense Gold Metallic Sheen Sweep */}
-                    <motion.div 
-                      animate={{ x: ['-150%', '250%'] }} 
-                      transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut", repeatDelay: 0.6 }} 
-                      className="absolute inset-0 bg-gradient-to-r from-transparent via-[#e6ff55]/40 to-transparent transform -skew-x-12 pointer-events-none" 
-                    />
-                    <span className="text-3xl font-display font-black italic text-[#e6ff55] drop-shadow-[0_0_10px_rgba(230,255,85,0.5)]">1º</span>
-                    <span className="text-[10px] font-mono font-bold text-[#e6ff55] uppercase tracking-widest mt-1">CAMPEÃO</span>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* 3rd PLACE (P3 - BRONZE) - Appears 1st at delay: 0.35s */}
-              {postRaceResult.podium[2] && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 35, scale: 0.8 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ delay: 0.35, type: "spring", stiffness: 220, damping: 20 }}
-                  className="flex flex-col items-center"
-                >
-                  <Trophy className="w-6 h-6 text-[#ff5f8f] filter drop-shadow-[0_0_10px_rgba(255,95,143,0.8)] mb-1" />
-                  <div className="text-xs font-display font-black italic uppercase text-white truncate max-w-full mb-0.5">
-                    {postRaceResult.podium[2].driverName}
-                  </div>
-                  <div className="text-[10px] font-mono text-[#ff5f8f] font-bold mb-2">+15 pts</div>
-                  
-                  {/* Bronze Metallic Step Pillar */}
-                  <div className="w-full h-20 bg-gradient-to-b from-[#2a1a24] via-[#1a141a] to-[#100d12] border-t-4 border-[#ff5f8f] shadow-[0_0_15px_rgba(255,95,143,0.3)] rounded-t-2xl flex flex-col items-center justify-center p-2 relative overflow-hidden">
-                    {/* Metallic Sheen Sweep */}
-                    <motion.div 
-                      animate={{ x: ['-150%', '250%'] }} 
-                      transition={{ repeat: Infinity, duration: 2.4, ease: "easeInOut", repeatDelay: 1.2 }} 
-                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent transform -skew-x-12 pointer-events-none" 
-                    />
-                    <span className="text-xl font-display font-black italic text-[#ff5f8f]">3º</span>
-                    <span className="text-[9px] font-mono text-slate-300 uppercase tracking-widest mt-0.5">BRONZE</span>
-                  </div>
-                </motion.div>
-              )}
+                  <DollarSign className="w-4 h-4" />
+                  <span>Premiação & Metas ({postRaceResult.sponsorBonuses?.filter(s => s.achieved).length || 0}/6)</span>
+                </button>
+              </div>
             </div>
 
-            {/* EXTRA AWARDS: MELHOR VOLTA & PILOTO DO DIA (Sequential delay: 1.35s) */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.35, duration: 0.4 }}
-              className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left font-mono"
-            >
-              {/* ⚡ Fastest Lap Award */}
-              <div className={`p-3 rounded-2xl border ${
-                postRaceResult.fastestLapBonusWon 
-                  ? 'bg-[#e6ff55]/10 border-[#e6ff55]/50 ring-1 ring-[#e6ff55]/30' 
-                  : 'bg-[#070709] border-white/5'
-              }`}>
-                <div className="flex items-center justify-between text-[11px] mb-1">
-                  <span className="text-[#e6ff55] font-bold flex items-center gap-1">
-                    <Zap className="w-3.5 h-3.5" />
-                    MELHOR VOLTA
-                  </span>
-                  {postRaceResult.fastestLapBonusWon && (
-                    <span className="px-1.5 py-0.2 bg-[#e6ff55] text-black font-black text-[9px] rounded-full">
-                      +1 PT · +2 XP
-                    </span>
-                  )}
-                </div>
-                <div className="text-xs font-bold text-white truncate">
-                  {postRaceResult.fastestLap?.driverName || 'Piloto'}
-                </div>
-                <div className="text-[10px] text-[#8e8e9c]">
-                  Tempo: <strong className="text-[#e6ff55]">{postRaceResult.fastestLap?.lapTime}</strong>
-                  {postRaceResult.fastestLapBonusWon && <span className="text-emerald-400 ml-1">(+$0.5M)</span>}
-                </div>
-              </div>
-
-              {/* 🏎️ Most Overtakes / Driver of the Day Award */}
-              <div className={`p-3 rounded-2xl border ${
-                postRaceResult.mostOvertakesBonusWon 
-                  ? 'bg-[#ff5f8f]/10 border-[#ff5f8f]/50 ring-1 ring-[#ff5f8f]/30' 
-                  : 'bg-[#070709] border-white/5'
-              }`}>
-                <div className="flex items-center justify-between text-[11px] mb-1">
-                  <span className="text-[#ff5f8f] font-bold flex items-center gap-1">
-                    <Flame className="w-3.5 h-3.5" />
-                    PILOTO DO DIA
-                  </span>
-                  {postRaceResult.mostOvertakesBonusWon && (
-                    <span className="px-1.5 py-0.2 bg-[#ff5f8f] text-black font-black text-[9px] rounded-full">
-                      +2 XP EXTRA
-                    </span>
-                  )}
-                </div>
-                <div className="text-xs font-bold text-white truncate">
-                  {postRaceResult.mostOvertakes?.driverName || 'Piloto'}
-                </div>
-                <div className="text-[10px] text-[#8e8e9c]">
-                  Ultrapassagens: <strong className="text-white">+{postRaceResult.mostOvertakes?.count || 0}</strong>
-                  {postRaceResult.mostOvertakesBonusWon && <span className="text-emerald-400 ml-1">(+$0.5M)</span>}
-                </div>
-              </div>
-            </motion.div>
-
-            {/* RACE STATS SUMMARY (Sequential delay: 1.5s) */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.5, duration: 0.4 }}
-              className="bg-[#070709] p-4 rounded-2xl border border-white/5 space-y-2 font-mono text-xs"
-            >
-              <div className="flex justify-between">
-                <span className="text-[#8e8e9c]">Sua Posição Final:</span>
-                <span className="font-bold text-white text-sm">P{postRaceResult.position} ({postRaceResult.pitStops} Pit Stop)</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#8e8e9c]">Pontos no Campeonato:</span>
-                <span className="font-bold text-[#e6ff55]">
-                  +{postRaceResult.points} pts
-                  {postRaceResult.fastestLapBonusWon && <span className="text-[10px] text-[#8e8e9c] ml-1">(inclui +1 de Melhor Volta)</span>}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#8e8e9c]">Prêmio de Corrida:</span>
-                <span className="font-bold text-slate-200">+${postRaceResult.prize}M · +3 XP</span>
-              </div>
-              {postRaceResult.totalSponsorMoney && postRaceResult.totalSponsorMoney > 0 ? (
-                <div className="flex justify-between border-t border-white/5 pt-1.5">
-                  <span className="text-[#8e8e9c]">Salário dos Patrocinadores:</span>
-                  <span className="font-bold text-[#e6ff55]">
-                    +${postRaceResult.totalSponsorMoney}M
-                  </span>
-                </div>
-              ) : null}
-            </motion.div>
-
-            {/* METAS DE PATROCÍNIO ATINGIDAS (Sequential delay: 1.65s) */}
-            {postRaceResult.sponsorBonuses && postRaceResult.sponsorBonuses.length > 0 && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.65, duration: 0.4 }}
-                className="bg-[#070709] p-3.5 rounded-2xl border border-white/5 text-left font-mono text-xs space-y-2"
-              >
-                <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                  <span className="text-[10px] font-bold text-[#8e8e9c] uppercase tracking-wider flex items-center gap-1.5">
-                    <Briefcase className="w-3.5 h-3.5 text-[#38bdf8]" />
-                    METAS DE TEMPORADA · PROGRESSO DO GP
-                  </span>
-                  <span className="text-[10px] text-[#e6ff55] font-bold">
-                    +${postRaceResult.totalSponsorMoney || 0}M / GP
-                  </span>
-                </div>
-                <div className="space-y-1.5">
-                  {postRaceResult.sponsorBonuses.slice(0, 4).map(sb => (
-                    <div 
-                      key={sb.title} 
-                      className={`p-2 rounded-xl border flex items-center justify-between text-xs ${
-                        sb.achieved 
-                          ? 'bg-[#191924] border-[#e6ff55]/40 text-white' 
-                          : 'bg-[#070709] border-white/5 text-[#8e8e9c]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        <span>{sb.logo}</span>
-                        <div>
-                          <div className="font-bold flex items-center gap-1.5">
-                            <span>{sb.name}</span>
-                            <span className="text-[10px] text-[#8e8e9c] font-normal">({sb.title})</span>
-                          </div>
-                        </div>
+            {resultViewMode === 'podio' ? (
+              /* SUB-PAGE 1: PODIUM CEREMONY + AWARDS + SUMMARY */
+              <div className="space-y-3 my-auto">
+                <div className="grid grid-cols-3 gap-3 items-end pt-2 px-2">
+                  {/* 2nd PLACE */}
+                  {postRaceResult.podium[1] && (
+                    <div className="flex flex-col items-center">
+                      <Trophy className="w-5 h-5 text-[#38bdf8] mb-1" />
+                      <div className="text-xs font-display font-black italic uppercase text-white truncate max-w-full">
+                        {postRaceResult.podium[1].driverName}
                       </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        {sb.achieved ? (
-                          <span className="px-2 py-0.5 rounded-full bg-[#e6ff55]/20 text-[#e6ff55] border border-[#e6ff55]/40 font-bold text-[10px]">
-                            {sb.currentProgress}/{sb.targetValue}
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full bg-[#191924] text-[#8e8e9c] text-[10px]">
-                            {sb.currentProgress}/{sb.targetValue}
-                          </span>
-                        )}
+                      <div className="text-[10px] font-mono text-[#38bdf8] font-bold mb-1">+18 pts</div>
+                      <div className="w-full h-16 bg-gradient-to-b from-[#182838] to-[#0d121b] border-t-4 border-[#38bdf8] rounded-t-xl flex flex-col items-center justify-center p-2">
+                        <span className="text-lg font-display font-black italic text-[#38bdf8]">2º</span>
                       </div>
                     </div>
-                  ))}
+                  )}
+
+                  {/* 1st PLACE */}
+                  {postRaceResult.podium[0] && (
+                    <div className="flex flex-col items-center">
+                      <Trophy className="w-6 h-6 text-[#e6ff55] mb-1" />
+                      <div className="text-xs sm:text-sm font-display font-black italic uppercase text-[#e6ff55] truncate max-w-full">
+                        {postRaceResult.podium[0].driverName}
+                      </div>
+                      <div className="text-[11px] font-mono text-[#e6ff55] font-bold mb-1">+25 pts</div>
+                      <div className="w-full h-24 bg-gradient-to-b from-[#2e3318] to-[#12140b] border-t-4 border-[#e6ff55] rounded-t-xl flex flex-col items-center justify-center p-2">
+                        <span className="text-2xl font-display font-black italic text-[#e6ff55]">1º</span>
+                        <span className="text-[9px] font-mono font-bold text-[#e6ff55] uppercase">VENCEDOR</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 3rd PLACE */}
+                  {postRaceResult.podium[2] && (
+                    <div className="flex flex-col items-center">
+                      <Trophy className="w-5 h-5 text-[#ff5f8f] mb-1" />
+                      <div className="text-xs font-display font-black italic uppercase text-white truncate max-w-full">
+                        {postRaceResult.podium[2].driverName}
+                      </div>
+                      <div className="text-[10px] font-mono text-[#ff5f8f] font-bold mb-1">+15 pts</div>
+                      <div className="w-full h-14 bg-gradient-to-b from-[#2a1a24] to-[#100d12] border-t-4 border-[#ff5f8f] rounded-t-xl flex flex-col items-center justify-center p-2">
+                        <span className="text-base font-display font-black italic text-[#ff5f8f]">3º</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </motion.div>
+
+                {/* Fastest Lap & Driver of the Day */}
+                <div className="grid grid-cols-2 gap-2.5 text-left font-mono">
+                  <div className={`p-3 rounded-2xl border ${
+                    postRaceResult.fastestLapBonusWon ? 'bg-[#e6ff55]/10 border-[#e6ff55]/50' : 'bg-[#070709] border-white/5'
+                  }`}>
+                    <div className="flex items-center justify-between text-[10px] mb-0.5">
+                      <span className="text-[#e6ff55] font-bold flex items-center gap-1">
+                        <Zap className="w-3.5 h-3.5" /> MELHOR VOLTA
+                      </span>
+                      {postRaceResult.fastestLapBonusWon && (
+                        <span className="px-2 py-0.5 bg-[#e6ff55] text-black font-black text-[9px] rounded-full">+1 PT · +2 XP</span>
+                      )}
+                    </div>
+                    <div className="text-xs sm:text-sm font-bold text-white truncate">{postRaceResult.fastestLap?.driverName}</div>
+                    <div className="text-[11px] text-[#8e8e9c]">Tempo: <strong className="text-[#e6ff55]">{postRaceResult.fastestLap?.lapTime}</strong></div>
+                  </div>
+
+                  <div className={`p-3 rounded-2xl border ${
+                    postRaceResult.mostOvertakesBonusWon ? 'bg-[#ff5f8f]/10 border-[#ff5f8f]/50' : 'bg-[#070709] border-white/5'
+                  }`}>
+                    <div className="flex items-center justify-between text-[10px] mb-0.5">
+                      <span className="text-[#ff5f8f] font-bold flex items-center gap-1">
+                        <Flame className="w-3.5 h-3.5" /> PILOTO DO DIA
+                      </span>
+                      {postRaceResult.mostOvertakesBonusWon && (
+                        <span className="px-2 py-0.5 bg-[#ff5f8f] text-black font-black text-[9px] rounded-full">+2 XP EXTRA</span>
+                      )}
+                    </div>
+                    <div className="text-xs sm:text-sm font-bold text-white truncate">{postRaceResult.mostOvertakes?.driverName}</div>
+                    <div className="text-[11px] text-[#8e8e9c]">Ultrapassagens: <strong className="text-white">+{postRaceResult.mostOvertakes?.count || 0}</strong></div>
+                  </div>
+                </div>
+
+                {/* Quick Player Result Bar */}
+                <div className="bg-[#070709] p-3.5 rounded-2xl border border-white/5 grid grid-cols-3 gap-2 font-mono text-xs">
+                  <div>
+                    <div className="text-[10px] text-[#8e8e9c] uppercase">Sua Chegada</div>
+                    <div className="text-base font-display font-black italic text-white">P{postRaceResult.position} ({postRaceResult.pitStops} Pit)</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-[#8e8e9c] uppercase">Pontos Ganhos</div>
+                    <div className="text-base font-display font-black italic text-[#e6ff55]">+{postRaceResult.points} pts</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-[#8e8e9c] uppercase">Ganhos do GP</div>
+                    <div className="text-base font-display font-black italic text-emerald-400">
+                      +${(postRaceResult.prize + (postRaceResult.totalSponsorMoney || 0)).toFixed(2)}M
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* SUB-PAGE 2: FINANCIAL BREAKDOWN & ALL 6 SEASON GOALS */
+              <div className="space-y-3 my-auto text-left font-mono">
+                <div className="bg-[#070709] p-3.5 rounded-2xl border border-white/5 space-y-1.5 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-[#8e8e9c]">Prêmio Oficial de Corrida (P{postRaceResult.position}):</span>
+                    <span className="font-bold text-white">+${postRaceResult.prize.toFixed(2)}M · +3 XP</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#8e8e9c]">Salário Fixo de Patrocinadores no GP:</span>
+                    <span className="font-bold text-[#e6ff55]">+${(postRaceResult.totalSponsorMoney || 0).toFixed(2)}M</span>
+                  </div>
+                </div>
+
+                {postRaceResult.sponsorBonuses && postRaceResult.sponsorBonuses.length > 0 && (
+                  <div className="bg-[#070709] p-3.5 rounded-2xl border border-white/5 space-y-2">
+                    <div className="text-[11px] font-bold text-[#8e8e9c] uppercase">
+                      PROGRESSO DAS 6 METAS DA TEMPORADA
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {postRaceResult.sponsorBonuses.map(sb => (
+                        <div 
+                          key={sb.title} 
+                          className={`p-2 px-3 rounded-xl border flex items-center justify-between gap-2 text-xs ${
+                            sb.achieved 
+                              ? 'bg-[#191924] border-[#e6ff55]/40 text-white' 
+                              : 'bg-[#14141c] border-white/5 text-[#8e8e9c]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="shrink-0">{sb.logo}</span>
+                            <span className="font-bold truncate">{sb.name}</span>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full font-bold text-[10px] bg-black/40 text-[#e6ff55] shrink-0">
+                            {sb.currentProgress}/{sb.targetValue}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
 
-            {/* CONTINUE BUTTON (Sequential delay: 1.8s) */}
-            <motion.button
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 1.8, type: "spring", stiffness: 300, damping: 22 }}
+            {/* CONTINUE BUTTON (LARGE HIT AREA) */}
+            <button
+              type="button"
               onClick={handleContinueSeason}
-              className="w-full bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase py-4 rounded-full text-base tracking-wider transition-all shadow-lg shadow-[#e6ff55]/20 cursor-pointer flex items-center justify-center gap-2 hover:scale-[1.02]"
+              className="w-full min-h-[50px] bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase py-3.5 rounded-2xl text-sm sm:text-base tracking-wider transition-all shadow-lg shadow-[#e6ff55]/25 cursor-pointer flex items-center justify-center gap-2 shrink-0 relative z-20"
             >
               <span>CONTINUAR CAMPEONATO</span>
               <ChevronRight className="w-5 h-5" />
-            </motion.button>
+            </button>
           </motion.div>
         </motion.div>
       )}
@@ -5298,31 +5342,33 @@ export default function App() {
 
       {/* PROMOTION MODAL (ONLY UNLOCKED WHEN FINISHING TOP 3 IN THE SEASON STANDINGS) */}
       {gameState === 'promotion' && driver && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/90 backdrop-blur-md overflow-hidden">
           <motion.div 
-            initial={{ scale: 0.9, opacity: 0 }}
+            initial={{ scale: 0.92, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="max-w-lg w-full bg-[#14141c] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl text-center my-auto space-y-4"
+            className="max-w-lg w-full max-h-[96vh] bg-[#14141c] border border-white/10 rounded-3xl p-4 sm:p-6 shadow-2xl text-center my-auto space-y-3 overflow-hidden"
           >
-            <div className="w-14 h-14 bg-[#e6ff55]/20 text-[#e6ff55] rounded-2xl flex items-center justify-center mx-auto border border-[#e6ff55]/30">
-              <Trophy className="w-7 h-7" />
+            <div className="w-11 h-11 bg-[#e6ff55]/20 text-[#e6ff55] rounded-2xl flex items-center justify-center mx-auto border border-[#e6ff55]/30">
+              <Trophy className="w-5 h-5" />
             </div>
 
-            <span className="text-xs font-mono uppercase text-[#e6ff55] font-bold">
-              {seasonEndRank}º LUGAR GERAL · TEMPORADA ARQUIVADA NO HISTÓRICO!
-            </span>
-            <h3 className="text-xl sm:text-2xl font-display font-black italic uppercase text-white">
-              {driver.category === 'f1' ? 'CAMPEONATO MUNDIAL DE F1 CONCLUÍDO!' : 'TOP 3 ALCANÇADO // PROMOÇÃO LIBERADA!'}
-            </h3>
-            <p className="text-[#8e8e9c] text-xs">
-              {driver.category === 'f1'
-                ? `Você encerrou a temporada da Fórmula 1 no Pódio Geral (${seasonEndRank}º lugar)! Escolha sua escuderia para o próximo ano.`
-                : `Parabéns! Você terminou em ${seasonEndRank}º lugar na somatória das corridas e conquistou vaga na próxima categoria! Escolha sua nova equipe:`}
-            </p>
+            <div className="space-y-1">
+              <span className="text-[10px] font-mono uppercase text-[#e6ff55] font-bold">
+                {seasonEndRank}º LUGAR GERAL · TEMPORADA ARQUIVADA NO HISTÓRICO!
+              </span>
+              <h3 className="text-lg sm:text-2xl font-display font-black italic uppercase text-white leading-tight">
+                {driver.category === 'f1' ? 'CAMPEONATO MUNDIAL DE F1 CONCLUÍDO!' : 'TOP 3 ALCANÇADO // PROMOÇÃO LIBERADA!'}
+              </h3>
+              <p className="text-[#8e8e9c] text-xs">
+                {driver.category === 'f1'
+                  ? `Você encerrou a temporada da Fórmula 1 no Pódio Geral (${seasonEndRank}º lugar)! Escolha sua escuderia para o próximo ano.`
+                  : `Parabéns! Você terminou em ${seasonEndRank}º lugar na somatória das corridas e conquistou vaga na próxima categoria! Escolha sua nova equipe:`}
+              </p>
+            </div>
 
             {/* Complete Season Summary Box */}
-            <div className="bg-[#070709] p-4 rounded-2xl border border-white/5 text-left font-mono text-xs space-y-3">
-              <div className="flex items-center justify-between border-b border-white/5 pb-2">
+            <div className="bg-[#070709] p-3 rounded-2xl border border-white/5 text-left font-mono text-xs space-y-2">
+              <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
                 <span className="text-[10px] text-[#8e8e9c] font-bold uppercase tracking-wider">
                   RESUMO DA TEMPORADA {currentSeason} ({driver.category.toUpperCase()})
                 </span>
@@ -5330,32 +5376,32 @@ export default function App() {
               </div>
 
               {/* Stats Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-                <div className="bg-[#191924] p-2 rounded-xl border border-white/5">
-                  <div className="text-[9px] text-[#8e8e9c] uppercase">Pos Final</div>
-                  <div className="text-sm font-display font-black italic text-[#e6ff55]">{seasonEndRank}º Lugar</div>
+              <div className="grid grid-cols-4 gap-2 text-center">
+                <div className="bg-[#191924] p-1.5 rounded-xl border border-white/5">
+                  <div className="text-[8px] text-[#8e8e9c] uppercase">Pos Final</div>
+                  <div className="text-xs font-display font-black italic text-[#e6ff55]">{seasonEndRank}º Lugar</div>
                 </div>
-                <div className="bg-[#191924] p-2 rounded-xl border border-white/5">
-                  <div className="text-[9px] text-[#8e8e9c] uppercase">Pontos</div>
-                  <div className="text-sm font-display font-black italic text-white">{currentPlayerStanding?.points || 0} pts</div>
+                <div className="bg-[#191924] p-1.5 rounded-xl border border-white/5">
+                  <div className="text-[8px] text-[#8e8e9c] uppercase">Pontos</div>
+                  <div className="text-xs font-display font-black italic text-white">{currentPlayerStanding?.points || 0} pts</div>
                 </div>
-                <div className="bg-[#191924] p-2 rounded-xl border border-white/5">
-                  <div className="text-[9px] text-[#8e8e9c] uppercase">Vitórias</div>
-                  <div className="text-sm font-display font-black italic text-[#ff5f8f]">{currentPlayerStanding?.wins || 0}V</div>
+                <div className="bg-[#191924] p-1.5 rounded-xl border border-white/5">
+                  <div className="text-[8px] text-[#8e8e9c] uppercase">Vitórias</div>
+                  <div className="text-xs font-display font-black italic text-[#ff5f8f]">{currentPlayerStanding?.wins || 0}V</div>
                 </div>
-                <div className="bg-[#191924] p-2 rounded-xl border border-white/5">
-                  <div className="text-[9px] text-[#8e8e9c] uppercase">Pódios</div>
-                  <div className="text-sm font-display font-black italic text-[#38bdf8]">{currentPlayerStanding?.podiums || 0}</div>
+                <div className="bg-[#191924] p-1.5 rounded-xl border border-white/5">
+                  <div className="text-[8px] text-[#8e8e9c] uppercase">Pódios</div>
+                  <div className="text-xs font-display font-black italic text-[#38bdf8]">{currentPlayerStanding?.podiums || 0}</div>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-1.5">
               {driver.category === 'kart' && TEAMS.filter(t => t.category === 'f3').map(t => (
                 <button
                   key={t.id}
                   onClick={() => promoteCategory('f3', t.id)}
-                  className="w-full py-3.5 px-4 bg-[#191924] hover:bg-[#222230] border border-white/5 text-white font-display font-black italic uppercase rounded-2xl cursor-pointer text-xs flex items-center justify-between transition-all"
+                  className="w-full py-2.5 px-3.5 bg-[#191924] hover:bg-[#222230] border border-white/5 text-white font-display font-black italic uppercase rounded-xl cursor-pointer text-xs flex items-center justify-between transition-all"
                 >
                   <span>Subir para F3 · <strong style={{ color: t.color }}>{t.name}</strong></span>
                   <span className="font-mono text-[#8e8e9c]">Carro {t.carPerformance}</span>
@@ -5365,7 +5411,7 @@ export default function App() {
                 <button
                   key={t.id}
                   onClick={() => promoteCategory('f2', t.id)}
-                  className="w-full py-3.5 px-4 bg-[#191924] hover:bg-[#222230] border border-white/5 text-white font-display font-black italic uppercase rounded-2xl cursor-pointer text-xs flex items-center justify-between transition-all"
+                  className="w-full py-2.5 px-3.5 bg-[#191924] hover:bg-[#222230] border border-white/5 text-white font-display font-black italic uppercase rounded-xl cursor-pointer text-xs flex items-center justify-between transition-all"
                 >
                   <span>Subir para F2 · <strong style={{ color: t.color }}>{t.name}</strong></span>
                   <span className="font-mono text-[#8e8e9c]">Carro {t.carPerformance}</span>
@@ -5375,7 +5421,7 @@ export default function App() {
                 <button
                   key={t.id}
                   onClick={() => promoteCategory('f1', t.id)}
-                  className="w-full py-3.5 px-4 bg-[#191924] hover:bg-[#222230] border border-white/5 text-white font-display font-black italic uppercase rounded-2xl cursor-pointer text-xs flex items-center justify-between transition-all"
+                  className="w-full py-2.5 px-3.5 bg-[#191924] hover:bg-[#222230] border border-white/5 text-white font-display font-black italic uppercase rounded-xl cursor-pointer text-xs flex items-center justify-between transition-all"
                 >
                   <span>Assinar F1 · <strong style={{ color: t.color }}>{t.name}</strong></span>
                   <span className="font-mono text-[#8e8e9c]">Carro {t.carPerformance}</span>
@@ -5388,17 +5434,17 @@ export default function App() {
 
       {/* SEASON FAILED TO REACH TOP 3 MODAL */}
       {gameState === 'season_failed' && driver && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/90 backdrop-blur-md overflow-hidden">
           <motion.div 
-            initial={{ scale: 0.9, opacity: 0 }}
+            initial={{ scale: 0.92, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="max-w-md w-full bg-[#14141c] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl text-center my-auto space-y-4"
+            className="max-w-md w-full max-h-[96vh] bg-[#14141c] border border-white/10 rounded-3xl p-4 sm:p-6 shadow-2xl text-center my-auto space-y-3 overflow-hidden"
           >
-            <div className="w-14 h-14 bg-[#ff5f8f]/20 text-[#ff5f8f] rounded-2xl flex items-center justify-center mx-auto border border-[#ff5f8f]/30">
-              <AlertTriangle className="w-7 h-7" />
+            <div className="w-11 h-11 bg-[#ff5f8f]/20 text-[#ff5f8f] rounded-2xl flex items-center justify-center mx-auto border border-[#ff5f8f]/30">
+              <AlertTriangle className="w-5 h-5" />
             </div>
 
-            <h3 className="text-xl sm:text-2xl font-display font-black italic uppercase text-white">
+            <h3 className="text-lg sm:text-2xl font-display font-black italic uppercase text-white leading-tight">
               FIM DA TEMPORADA {currentSeason} · {seasonEndRank}º LUGAR
             </h3>
             <p className="text-[#8e8e9c] text-xs leading-relaxed">
@@ -5406,8 +5452,8 @@ export default function App() {
             </p>
 
             {/* End of Season Complete Summary */}
-            <div className="bg-[#070709] p-4 rounded-2xl border border-white/5 text-left font-mono text-xs space-y-3">
-              <div className="flex items-center justify-between border-b border-white/5 pb-2">
+            <div className="bg-[#070709] p-3 rounded-2xl border border-white/5 text-left font-mono text-xs space-y-2">
+              <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
                 <span className="text-[10px] text-[#8e8e9c] font-bold uppercase tracking-wider">
                   RESUMO DA TEMPORADA {currentSeason}
                 </span>
@@ -5415,22 +5461,22 @@ export default function App() {
               </div>
 
               {/* Stats Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-                <div className="bg-[#191924] p-2 rounded-xl border border-white/5">
-                  <div className="text-[9px] text-[#8e8e9c] uppercase">Pos Final</div>
-                  <div className="text-sm font-display font-black italic text-white">{seasonEndRank}º</div>
+              <div className="grid grid-cols-4 gap-2 text-center">
+                <div className="bg-[#191924] p-1.5 rounded-xl border border-white/5">
+                  <div className="text-[8px] text-[#8e8e9c] uppercase">Pos Final</div>
+                  <div className="text-xs font-display font-black italic text-white">{seasonEndRank}º</div>
                 </div>
-                <div className="bg-[#191924] p-2 rounded-xl border border-white/5">
-                  <div className="text-[9px] text-[#8e8e9c] uppercase">Pontos</div>
-                  <div className="text-sm font-display font-black italic text-[#e6ff55]">{currentPlayerStanding?.points || 0} pts</div>
+                <div className="bg-[#191924] p-1.5 rounded-xl border border-white/5">
+                  <div className="text-[8px] text-[#8e8e9c] uppercase">Pontos</div>
+                  <div className="text-xs font-display font-black italic text-[#e6ff55]">{currentPlayerStanding?.points || 0} pts</div>
                 </div>
-                <div className="bg-[#191924] p-2 rounded-xl border border-white/5">
-                  <div className="text-[9px] text-[#8e8e9c] uppercase">Vitórias</div>
-                  <div className="text-sm font-display font-black italic text-white">{currentPlayerStanding?.wins || 0}V</div>
+                <div className="bg-[#191924] p-1.5 rounded-xl border border-white/5">
+                  <div className="text-[8px] text-[#8e8e9c] uppercase">Vitórias</div>
+                  <div className="text-xs font-display font-black italic text-white">{currentPlayerStanding?.wins || 0}V</div>
                 </div>
-                <div className="bg-[#191924] p-2 rounded-xl border border-white/5">
-                  <div className="text-[9px] text-[#8e8e9c] uppercase">Déficit Top 3</div>
-                  <div className="text-sm font-display font-black italic text-[#ff5f8f]">
+                <div className="bg-[#191924] p-1.5 rounded-xl border border-white/5">
+                  <div className="text-[8px] text-[#8e8e9c] uppercase">Déficit Top 3</div>
+                  <div className="text-xs font-display font-black italic text-[#ff5f8f]">
                     -{Math.max(1, thirdPlacePoints - playerPoints)} pts
                   </div>
                 </div>
@@ -5439,7 +5485,7 @@ export default function App() {
 
             <button
               onClick={retryCategorySeason}
-              className="w-full py-4 bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase rounded-full shadow-lg shadow-[#e6ff55]/20 cursor-pointer text-base tracking-wider transition-all"
+              className="w-full py-3 bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase rounded-full shadow-lg shadow-[#e6ff55]/20 cursor-pointer text-sm sm:text-base tracking-wider transition-all"
             >
               INICIAR TEMPORADA {currentSeason + 1} ({driver.category.toUpperCase()})
             </button>
