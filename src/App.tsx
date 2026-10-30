@@ -2252,7 +2252,7 @@ export default function App() {
                   {[
                     { id: 'garagem', label: 'Garagem & Telemetria', icon: User, badge: `Etapa ${currentRaceIndex + 1}` },
                     { id: 'treino', label: 'Centro de Evolução', icon: Zap, badge: trainingPoints > 0 ? `${trainingPoints} XP` : undefined },
-                    { id: 'calendario', label: '⚡ PRÓXIMA CORRIDA 🏁', icon: Play, isHero: true, badge: currentTrack.weather },
+                    { id: 'calendario', label: 'PRÓXIMA CORRIDA 🏁', icon: Calendar, isHero: true, badge: currentTrack.weather },
                     { 
                       id: 'patrocinio', 
                       label: 'Metas & Conquistas', 
@@ -2273,19 +2273,19 @@ export default function App() {
                           isHero
                             ? isActive
                               ? 'bg-[#e6ff55] text-black font-display font-black italic uppercase shadow-lg shadow-[#e6ff55]/30 ring-2 ring-[#e6ff55] text-sm'
-                              : 'bg-[#1e1e2d] text-[#e6ff55] font-display font-black italic uppercase border border-[#e6ff55]/50 hover:bg-[#e6ff55] hover:text-black shadow-md'
+                              : 'bg-[#191924] text-[#8e8e9c] hover:bg-[#1e1e2d] hover:text-white font-display font-black italic uppercase border border-white/10 shadow-sm'
                             : isActive
                             ? 'bg-[#e6ff55] text-black font-bold shadow-lg shadow-[#e6ff55]/15'
                             : 'text-[#8e8e9c] hover:bg-[#181822] hover:text-white'
                         }`}
                       >
                         <div className="flex items-center gap-2.5 truncate">
-                          <Icon className={`w-4 h-4 shrink-0 ${isHero ? 'fill-current' : ''}`} />
+                          <Icon className="w-4 h-4 shrink-0" />
                           <span className="truncate">{item.label}</span>
                         </div>
                         {item.badge && (
                           <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
-                            isHero ? 'bg-black/20 text-black' : isActive ? 'bg-black/20 text-black' : 'bg-[#191924] text-[#e6ff55]'
+                            isActive ? 'bg-black/20 text-black' : 'bg-[#191924] text-[#e6ff55]'
                           }`}>
                             {item.badge}
                           </span>
@@ -4003,7 +4003,7 @@ export default function App() {
             {[
               { id: 'garagem', label: 'Garagem', icon: User },
               { id: 'treino', label: 'Treino', icon: Zap },
-              { id: 'calendario', label: 'Próxima Corrida', icon: Play, isCenterHero: true },
+              { id: 'calendario', label: 'Próxima Corrida', icon: Calendar, isCenterHero: true },
               { id: 'patrocinio', label: 'Metas', icon: Briefcase },
               { id: 'classificacao', label: 'Campeonato', icon: BarChart2 },
             ].map(item => {
@@ -4018,11 +4018,11 @@ export default function App() {
                     className={`flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full font-display font-black italic uppercase transition-all cursor-pointer relative -translate-y-2.5 shadow-xl ${
                       isActive
                         ? 'bg-[#e6ff55] text-black ring-4 ring-[#e6ff55]/30 shadow-[#e6ff55]/40 scale-110'
-                        : 'bg-[#e6ff55] text-black hover:brightness-110 shadow-[#e6ff55]/25'
+                        : 'bg-[#191924] text-[#8e8e9c] border border-white/10 hover:text-white hover:border-white/20'
                     }`}
                     title="Próxima Corrida"
                   >
-                    <Play className="w-4 h-4 fill-current shrink-0" />
+                    <Calendar className="w-4 h-4 shrink-0" />
                     <span className="text-[11px] tracking-wider leading-none">CORRIDA</span>
                   </button>
                 );
@@ -4034,7 +4034,7 @@ export default function App() {
                   onClick={() => switchHubTab(item.id as HubTab)}
                   className={`flex flex-col items-center justify-center transition-all cursor-pointer relative ${
                     isActive 
-                      ? 'w-10 h-10 rounded-full bg-[#242434] text-[#e6ff55] shadow-inner scale-110' 
+                      ? 'w-10 h-10 rounded-full bg-[#e6ff55] text-black shadow-lg shadow-[#e6ff55]/30 scale-110' 
                       : 'w-8 h-8 rounded-full text-[#8e8e9c] hover:text-white'
                   }`}
                   title={item.label}
