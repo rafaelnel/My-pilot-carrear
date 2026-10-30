@@ -1,1 +1,54 @@
 @import "tailwindcss";
+
+@theme {
+  --font-display: 'Barlow Condensed', sans-serif;
+  --font-sans: 'Plus Jakarta Sans', sans-serif;
+  --color-acid: #e6ff55;
+  --color-punch: #ff5f8f;
+  --color-volt: #e6ff55;
+  --color-neon-blue: #38bdf8;
+  --color-dark-card: #15151a;
+  --color-dark-surface: #1c1c24;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  background-color: #070709;
+  color: #f3f3f6;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-display {
+  font-family: 'Barlow Condensed', sans-serif;
+}
+
+/* Dark grid background matching screen 1 in reference */
+.bg-dark-grid {
+  background-size: 28px 28px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0d0d11;
+}
+::-webkit-scrollbar-thumb {
+  background: #23232c;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #333340;
+}

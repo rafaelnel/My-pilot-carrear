@@ -1,32 +1,241 @@
-import { Team, Track, RivalDriver, SponsorContract, TireCompound } from '../types';
+import { Team, Track, RivalDriver, SponsorContract, TireCompound, CareerMilestone } from '../types';
 
 export const TEAMS: Team[] = [
   // KART TEAMS
-  { id: 'kart_birel', name: 'Birel ART Karting', shortName: 'BIR', color: '#3b82f6', category: 'kart', carPerformance: 50, reliability: 95, bonusType: 'Agilidade em Baixa Velocidade', prestige: 1 },
-  { id: 'kart_crg', name: 'CRG Racing Team', shortName: 'CRG', color: '#ef4444', category: 'kart', carPerformance: 52, reliability: 92, bonusType: 'Aceleração Inicial', prestige: 1 },
-  { id: 'kart_tony', name: 'Tony Kart Official', shortName: 'TNY', color: '#10b981', category: 'kart', carPerformance: 51, reliability: 94, bonusType: 'Estabilidade em Chassi', prestige: 1 },
+  { 
+    id: 'kart_birel', 
+    name: 'Birel ART Karting', 
+    shortName: 'BIR', 
+    color: '#3b82f6', 
+    category: 'kart', 
+    carPerformance: 50, 
+    reliability: 95, 
+    bonusType: 'Agilidade em Baixa Velocidade', 
+    prestige: 1,
+    attributeBonuses: { overtaking: 2, starts: 1 }
+  },
+  { 
+    id: 'kart_crg', 
+    name: 'CRG Racing Team', 
+    shortName: 'CRG', 
+    color: '#ef4444', 
+    category: 'kart', 
+    carPerformance: 52, 
+    reliability: 92, 
+    bonusType: 'Aceleração Inicial & Largadas', 
+    prestige: 1,
+    attributeBonuses: { starts: 2, speed: 1 }
+  },
+  { 
+    id: 'kart_tony', 
+    name: 'Tony Kart Official', 
+    shortName: 'TNY', 
+    color: '#10b981', 
+    category: 'kart', 
+    carPerformance: 51, 
+    reliability: 94, 
+    bonusType: 'Estabilidade em Chassi & Consistência', 
+    prestige: 1,
+    attributeBonuses: { consistency: 2, defense: 1 }
+  },
 
   // F3 TEAMS
-  { id: 'f3_prema', name: 'Prema Racing F3', shortName: 'PRE', color: '#e10600', category: 'f3', carPerformance: 72, reliability: 90, bonusType: 'Desenvolvimento de Piloto +15%', prestige: 3 },
-  { id: 'f3_trident', name: 'Trident F3', shortName: 'TRI', color: '#0284c7', category: 'f3', carPerformance: 70, reliability: 91, bonusType: 'Acerto de Chassi Rápido', prestige: 3 },
-  { id: 'f3_art', name: 'ART Grand Prix F3', shortName: 'ART', color: '#8b5cf6', category: 'f3', carPerformance: 69, reliability: 89, bonusType: 'Velocidade em Curvas de Alta', prestige: 3 },
+  { 
+    id: 'f3_prema', 
+    name: 'Prema Racing F3', 
+    shortName: 'PRE', 
+    color: '#e10600', 
+    category: 'f3', 
+    carPerformance: 72, 
+    reliability: 90, 
+    bonusType: 'Equilíbrio e Consistência de Traçado', 
+    prestige: 3,
+    attributeBonuses: { consistency: 3, speed: 2 }
+  },
+  { 
+    id: 'f3_trident', 
+    name: 'Trident F3', 
+    shortName: 'TRI', 
+    color: '#0284c7', 
+    category: 'f3', 
+    carPerformance: 70, 
+    reliability: 91, 
+    bonusType: 'Acerto de Reta & Largada Rápida', 
+    prestige: 3,
+    attributeBonuses: { speed: 3, starts: 2 }
+  },
+  { 
+    id: 'f3_art', 
+    name: 'ART Grand Prix F3', 
+    shortName: 'ART', 
+    color: '#8b5cf6', 
+    category: 'f3', 
+    carPerformance: 69, 
+    reliability: 89, 
+    bonusType: 'Ataque em Curvas & Ultrapassagem', 
+    prestige: 3,
+    attributeBonuses: { overtaking: 3, consistency: 2 }
+  },
 
   // F2 TEAMS
-  { id: 'f2_invicta', name: 'Invicta Racing F2', shortName: 'INV', color: '#f59e0b', category: 'f2', carPerformance: 82, reliability: 88, bonusType: 'Gestão de Pneus', prestige: 6 },
-  { id: 'f2_mp', name: 'MP Motorsport F2', shortName: 'MP', color: '#f97316', category: 'f2', carPerformance: 80, reliability: 87, bonusType: 'Largadas Potentes', prestige: 6 },
-  { id: 'f2_cams', name: 'Campos Racing F2', shortName: 'CAM', color: '#06b6d4', category: 'f2', carPerformance: 81, reliability: 86, bonusType: 'Estratégia de Pit Stop', prestige: 6 },
+  { 
+    id: 'f2_invicta', 
+    name: 'Invicta Racing F2', 
+    shortName: 'INV', 
+    color: '#f59e0b', 
+    category: 'f2', 
+    carPerformance: 82, 
+    reliability: 88, 
+    bonusType: 'Velocidade Máxima & Ritmo Constante', 
+    prestige: 6,
+    attributeBonuses: { speed: 3, consistency: 2 }
+  },
+  { 
+    id: 'f2_mp', 
+    name: 'MP Motorsport F2', 
+    shortName: 'MP', 
+    color: '#f97316', 
+    category: 'f2', 
+    carPerformance: 80, 
+    reliability: 87, 
+    bonusType: 'Largadas Potentes & Manobras de Ataque', 
+    prestige: 6,
+    attributeBonuses: { starts: 3, overtaking: 2 }
+  },
+  { 
+    id: 'f2_cams', 
+    name: 'Campos Racing F2', 
+    shortName: 'CAM', 
+    color: '#06b6d4', 
+    category: 'f2', 
+    carPerformance: 81, 
+    reliability: 86, 
+    bonusType: 'Defesa de Posição & Gestão de Pneus', 
+    prestige: 6,
+    attributeBonuses: { defense: 3, consistency: 2 }
+  },
 
   // F1 TEAMS
-  { id: 'ferrari', name: 'Scuderia Ferrari F1', shortName: 'FER', color: '#e10600', category: 'f1', carPerformance: 94, reliability: 89, bonusType: 'Motor V6 Potente', prestige: 10 },
-  { id: 'mclaren', name: 'McLaren F1 Team', shortName: 'MCL', color: '#ff8000', category: 'f1', carPerformance: 95, reliability: 92, bonusType: 'Aerodinâmica de Ponta', prestige: 10 },
-  { id: 'redbull', name: 'Red Bull Racing F1', shortName: 'RBR', color: '#3671c6', category: 'f1', carPerformance: 96, reliability: 91, bonusType: 'Estratégia Perfeita', prestige: 10 },
-  { id: 'mercedes', name: 'Mercedes-AMG Petronas F1', shortName: 'MER', color: '#6cd3bf', category: 'f1', carPerformance: 92, reliability: 95, bonusType: 'Confiabilidade Mecânica', prestige: 9 },
-  { id: 'aston', name: 'Aston Martin Aramco F1', shortName: 'AMR', color: '#229971', category: 'f1', carPerformance: 87, reliability: 90, bonusType: 'Infraestrutura Avançada', prestige: 8 },
-  { id: 'alpine', name: 'BWT Alpine F1 Team', shortName: 'ALP', color: '#0090ff', category: 'f1', carPerformance: 82, reliability: 85, bonusType: 'Balanço em Curvas Médias', prestige: 7 },
-  { id: 'vcarb', name: 'Visa Cash App RB F1', shortName: 'VCB', color: '#6692ff', category: 'f1', carPerformance: 81, reliability: 86, bonusType: 'Trocas de Pneus Ágeis', prestige: 6 },
-  { id: 'williams', name: 'Williams Racing F1', shortName: 'WIL', color: '#005aff', category: 'f1', carPerformance: 79, reliability: 86, bonusType: 'Velocidade de Reta Pura', prestige: 6 },
-  { id: 'haas', name: 'Haas F1 Team', shortName: 'HAS', color: '#b6babd', category: 'f1', carPerformance: 76, reliability: 82, bonusType: 'Baixo Custo de Manutenção', prestige: 5 },
-  { id: 'sauber', name: 'Stake F1 Team Sauber', shortName: 'SAU', color: '#52e252', category: 'f1', carPerformance: 74, reliability: 80, bonusType: 'Agressividade na Largada', prestige: 5 }
+  { 
+    id: 'ferrari', 
+    name: 'Scuderia Ferrari F1', 
+    shortName: 'FER', 
+    color: '#e10600', 
+    category: 'f1', 
+    carPerformance: 94, 
+    reliability: 89, 
+    bonusType: 'Motor V6 Potente (+4 Vel, +3 Ult, +1 Lar)', 
+    prestige: 10,
+    attributeBonuses: { speed: 4, overtaking: 3, starts: 1 }
+  },
+  { 
+    id: 'mclaren', 
+    name: 'McLaren F1 Team', 
+    shortName: 'MCL', 
+    color: '#ff8000', 
+    category: 'f1', 
+    carPerformance: 95, 
+    reliability: 92, 
+    bonusType: 'Aerodinâmica de Ponta (+4 Cons, +3 Vel, +1 Ult)', 
+    prestige: 10,
+    attributeBonuses: { consistency: 4, speed: 3, overtaking: 1 }
+  },
+  { 
+    id: 'redbull', 
+    name: 'Red Bull Racing F1', 
+    shortName: 'RBR', 
+    color: '#3671c6', 
+    category: 'f1', 
+    carPerformance: 96, 
+    reliability: 91, 
+    bonusType: 'Chassi Ágil & Estratégia (+3 Vel, +3 Ult, +2 Lar)', 
+    prestige: 10,
+    attributeBonuses: { speed: 3, overtaking: 3, starts: 2 }
+  },
+  { 
+    id: 'mercedes', 
+    name: 'Mercedes-AMG Petronas F1', 
+    shortName: 'MER', 
+    color: '#6cd3bf', 
+    category: 'f1', 
+    carPerformance: 92, 
+    reliability: 95, 
+    bonusType: 'Confiabilidade Mecânica (+4 Cons, +3 Def, +1 Lar)', 
+    prestige: 9,
+    attributeBonuses: { consistency: 4, defense: 3, starts: 1 }
+  },
+  { 
+    id: 'aston', 
+    name: 'Aston Martin Aramco F1', 
+    shortName: 'AMR', 
+    color: '#229971', 
+    category: 'f1', 
+    carPerformance: 87, 
+    reliability: 90, 
+    bonusType: 'Muralha Defensiva & Tração (+4 Def, +3 Cons, +1 Vel)', 
+    prestige: 8,
+    attributeBonuses: { defense: 4, consistency: 3, speed: 1 }
+  },
+  { 
+    id: 'alpine', 
+    name: 'BWT Alpine F1 Team', 
+    shortName: 'ALP', 
+    color: '#0090ff', 
+    category: 'f1', 
+    carPerformance: 82, 
+    reliability: 85, 
+    bonusType: 'Balanço em Curvas Médias (+3 Cons, +2 Vel, +2 Ult)', 
+    prestige: 7,
+    attributeBonuses: { consistency: 3, speed: 2, overtaking: 2 }
+  },
+  { 
+    id: 'vcarb', 
+    name: 'Visa Cash App RB F1', 
+    shortName: 'VCB', 
+    color: '#6692ff', 
+    category: 'f1', 
+    carPerformance: 81, 
+    reliability: 86, 
+    bonusType: 'Largadas Explosivas & Ataque (+3 Lar, +3 Ult, +1 Vel)', 
+    prestige: 6,
+    attributeBonuses: { starts: 3, overtaking: 3, speed: 1 }
+  },
+  { 
+    id: 'williams', 
+    name: 'Williams Racing F1', 
+    shortName: 'WIL', 
+    color: '#005aff', 
+    category: 'f1', 
+    carPerformance: 79, 
+    reliability: 86, 
+    bonusType: 'Velocidade Pura em Reta (+5 Vel, +2 Lar)', 
+    prestige: 6,
+    attributeBonuses: { speed: 5, starts: 2 }
+  },
+  { 
+    id: 'haas', 
+    name: 'Haas F1 Team', 
+    shortName: 'HAS', 
+    color: '#b6babd', 
+    category: 'f1', 
+    carPerformance: 76, 
+    reliability: 82, 
+    bonusType: 'Defesa Cerrada de Pelotão (+3 Def, +3 Lar, +1 Vel)', 
+    prestige: 5,
+    attributeBonuses: { defense: 3, starts: 3, speed: 1 }
+  },
+  { 
+    id: 'sauber', 
+    name: 'Stake F1 Team Sauber', 
+    shortName: 'SAU', 
+    color: '#52e252', 
+    category: 'f1', 
+    carPerformance: 74, 
+    reliability: 80, 
+    bonusType: 'Reação Rápida em Partidas (+3 Lar, +2 Cons, +2 Def)', 
+    prestige: 5,
+    attributeBonuses: { starts: 3, consistency: 2, defense: 2 }
+  }
 ];
 
 export const TRACKS: Track[] = [
@@ -543,218 +752,287 @@ export const TRACKS: Track[] = [
   }
 ];
 
-// REAL F1 DRIVERS WITH REAL NATIONALITIES, OVR, AND SPECIALIZED STATS
+// REAL F1 DRIVERS - ALL CAPPED AT MAXIMUM AVERAGE OF 90 WITH SPECIALIZED PROFILES
 export const REAL_F1_DRIVERS: RivalDriver[] = [
-  { name: 'Max Verstappen', nationality: 'Holanda 🇳🇱', category: 'f1', teamId: 'redbull', ovr: 98, speed: 99, cornering: 97, defense: 98 },
-  { name: 'Lando Norris', nationality: 'Reino Unido 🇬🇧', category: 'f1', teamId: 'mclaren', ovr: 95, speed: 96, cornering: 95, defense: 92 },
-  { name: 'Charles Leclerc', nationality: 'Mônaco 🇲🇨', category: 'f1', teamId: 'ferrari', ovr: 94, speed: 97, cornering: 94, defense: 91 },
-  { name: 'Lewis Hamilton', nationality: 'Reino Unido 🇬🇧', category: 'f1', teamId: 'ferrari', ovr: 93, speed: 92, cornering: 95, defense: 94 },
-  { name: 'Oscar Piastri', nationality: 'Austrália 🇦🇺', category: 'f1', teamId: 'mclaren', ovr: 92, speed: 92, cornering: 93, defense: 92 },
-  { name: 'George Russell', nationality: 'Reino Unido 🇬🇧', category: 'f1', teamId: 'mercedes', ovr: 91, speed: 92, cornering: 91, defense: 90 },
-  { name: 'Fernando Alonso', nationality: 'Espanha 🇪🇸', category: 'f1', teamId: 'aston', ovr: 90, speed: 88, cornering: 92, defense: 96 },
-  { name: 'Carlos Sainz', nationality: 'Espanha 🇪🇸', category: 'f1', teamId: 'williams', ovr: 89, speed: 89, cornering: 90, defense: 90 },
-  { name: 'Alex Albon', nationality: 'Tailândia 🇹🇭', category: 'f1', teamId: 'williams', ovr: 87, speed: 90, cornering: 85, defense: 88 },
-  { name: 'Yuki Tsunoda', nationality: 'Japão 🇯🇵', category: 'f1', teamId: 'vcarb', ovr: 86, speed: 87, cornering: 86, defense: 84 },
-  { name: 'Nico Hulkenberg', nationality: 'Alemanha 🇩🇪', category: 'f1', teamId: 'sauber', ovr: 85, speed: 86, cornering: 84, defense: 86 },
-  { name: 'Pierre Gasly', nationality: 'França 🇫🇷', category: 'f1', teamId: 'alpine', ovr: 85, speed: 85, cornering: 86, defense: 85 },
-  { name: 'Esteban Ocon', nationality: 'França 🇫🇷', category: 'f1', teamId: 'haas', ovr: 84, speed: 83, cornering: 84, defense: 88 },
-  { name: 'Andrea Kimi Antonelli', nationality: 'Itália 🇮🇹', category: 'f1', teamId: 'mercedes', ovr: 84, speed: 87, cornering: 84, defense: 81 },
-  { name: 'Oliver Bearman', nationality: 'Reino Unido 🇬🇧', category: 'f1', teamId: 'haas', ovr: 83, speed: 85, cornering: 83, defense: 82 },
-  { name: 'Gabriel Bortoleto', nationality: 'Brasil 🇧🇷', category: 'f1', teamId: 'sauber', ovr: 83, speed: 84, cornering: 85, defense: 82 },
-  { name: 'Liam Lawson', nationality: 'Nova Zelândia 🇳🇿', category: 'f1', teamId: 'vcarb', ovr: 83, speed: 83, cornering: 83, defense: 85 },
-  { name: 'Franco Colapinto', nationality: 'Argentina 🇦🇷', category: 'f1', teamId: 'williams', ovr: 82, speed: 84, cornering: 82, defense: 81 },
-  { name: 'Jack Doohan', nationality: 'Austrália 🇦🇺', category: 'f1', teamId: 'alpine', ovr: 82, speed: 83, cornering: 81, defense: 81 },
-  { name: 'Lance Stroll', nationality: 'Canadá 🇨🇦', category: 'f1', teamId: 'aston', ovr: 81, speed: 82, cornering: 80, defense: 80 }
+  // Max Verstappen: Aggressive master, raw speed & cornering specialist (Avg: 90.0)
+  { name: 'Max Verstappen', nationality: 'Holanda 🇳🇱', category: 'f1', teamId: 'redbull', ovr: 90, speed: 95, cornering: 93, defense: 91, consistency: 88, starts: 83 },
+  // Charles Leclerc: Qualifying & pure speed specialist (Avg: 90.0)
+  { name: 'Charles Leclerc', nationality: 'Mônaco 🇲🇨', category: 'f1', teamId: 'ferrari', ovr: 90, speed: 96, cornering: 92, defense: 84, consistency: 86, starts: 92 },
+  // Lewis Hamilton: Tire management & racecraft consistency specialist (Avg: 90.0)
+  { name: 'Lewis Hamilton', nationality: 'Reino Unido 🇬🇧', category: 'f1', teamId: 'ferrari', ovr: 90, speed: 87, cornering: 91, defense: 93, consistency: 96, starts: 83 },
+  // Fernando Alonso: Defensive fortress & wheel-to-wheel master (Avg: 90.0)
+  { name: 'Fernando Alonso', nationality: 'Espanha 🇪🇸', category: 'f1', teamId: 'aston', ovr: 90, speed: 85, cornering: 89, defense: 97, consistency: 93, starts: 86 },
+  // Lando Norris: High-speed flowing curves & attack specialist (Avg: 90.0)
+  { name: 'Lando Norris', nationality: 'Reino Unido 🇬🇧', category: 'f1', teamId: 'mclaren', ovr: 90, speed: 93, cornering: 92, defense: 88, consistency: 89, starts: 88 },
+  // Oscar Piastri: Smooth precision & balanced race execution (Avg: 90.0)
+  { name: 'Oscar Piastri', nationality: 'Austrália 🇦🇺', category: 'f1', teamId: 'mclaren', ovr: 90, speed: 92, cornering: 91, defense: 88, consistency: 90, starts: 89 },
+  // George Russell: Steady qualifier & race pace (Avg: 90.0)
+  { name: 'George Russell', nationality: 'Reino Unido 🇬🇧', category: 'f1', teamId: 'mercedes', ovr: 90, speed: 91, cornering: 90, defense: 90, consistency: 90, starts: 89 },
+  // Carlos Sainz: Strategic defense & adaptability (Avg: 90.0)
+  { name: 'Carlos Sainz', nationality: 'Espanha 🇪🇸', category: 'f1', teamId: 'williams', ovr: 90, speed: 89, cornering: 90, defense: 92, consistency: 91, starts: 88 },
+  // Alex Albon: Straight line fighter (Avg: 88.0)
+  { name: 'Alex Albon', nationality: 'Tailândia 🇹🇭', category: 'f1', teamId: 'williams', ovr: 88, speed: 93, cornering: 86, defense: 89, consistency: 87, starts: 85 },
+  // Nico Hulkenberg: Qualifying ace & battle veteran (Avg: 88.0)
+  { name: 'Nico Hulkenberg', nationality: 'Alemanha 🇩🇪', category: 'f1', teamId: 'sauber', ovr: 88, speed: 92, cornering: 86, defense: 87, consistency: 88, starts: 87 },
+  // Yuki Tsunoda: Fast reactions & aggressive cornering (Avg: 87.0)
+  { name: 'Yuki Tsunoda', nationality: 'Japão 🇯🇵', category: 'f1', teamId: 'vcarb', ovr: 87, speed: 90, cornering: 88, defense: 84, consistency: 85, starts: 88 },
+  // Pierre Gasly: Well-rounded midfielder (Avg: 87.0)
+  { name: 'Pierre Gasly', nationality: 'França 🇫🇷', category: 'f1', teamId: 'alpine', ovr: 87, speed: 87, cornering: 88, defense: 88, consistency: 87, starts: 85 },
+  // Esteban Ocon: Fierce defender (Avg: 87.0)
+  { name: 'Esteban Ocon', nationality: 'França 🇫🇷', category: 'f1', teamId: 'haas', ovr: 87, speed: 84, cornering: 85, defense: 94, consistency: 86, starts: 86 },
+  // Andrea Kimi Antonelli: Young prodigy, high raw pace (Avg: 87.0)
+  { name: 'Andrea Kimi Antonelli', nationality: 'Itália 🇮🇹', category: 'f1', teamId: 'mercedes', ovr: 87, speed: 92, cornering: 87, defense: 82, consistency: 85, starts: 89 },
+  // Gabriel Bortoleto: High technical finesse (Avg: 87.0)
+  { name: 'Gabriel Bortoleto', nationality: 'Brasil 🇧🇷', category: 'f1', teamId: 'sauber', ovr: 87, speed: 88, cornering: 90, defense: 86, consistency: 87, starts: 84 },
+  // Oliver Bearman: Street circuit fighter (Avg: 86.0)
+  { name: 'Oliver Bearman', nationality: 'Reino Unido 🇬🇧', category: 'f1', teamId: 'haas', ovr: 86, speed: 88, cornering: 86, defense: 86, consistency: 85, starts: 85 },
+  // Liam Lawson: Hard defender & clutch starter (Avg: 86.0)
+  { name: 'Liam Lawson', nationality: 'Nova Zelândia 🇳🇿', category: 'f1', teamId: 'vcarb', ovr: 86, speed: 87, cornering: 86, defense: 88, consistency: 85, starts: 84 },
+  // Franco Colapinto: Fearless overtaking (Avg: 86.0)
+  { name: 'Franco Colapinto', nationality: 'Argentina 🇦🇷', category: 'f1', teamId: 'williams', ovr: 86, speed: 89, cornering: 85, defense: 85, consistency: 85, starts: 86 },
+  // Jack Doohan: Consistent developmental driver (Avg: 85.0)
+  { name: 'Jack Doohan', nationality: 'Austrália 🇦🇺', category: 'f1', teamId: 'alpine', ovr: 85, speed: 87, cornering: 85, defense: 84, consistency: 85, starts: 84 },
+  // Lance Stroll: Strong starts & wet weather capability (Avg: 85.0)
+  { name: 'Lance Stroll', nationality: 'Canadá 🇨🇦', category: 'f1', teamId: 'aston', ovr: 85, speed: 86, cornering: 83, defense: 85, consistency: 84, starts: 87 }
 ];
 
-// REAL F2 DRIVERS
+// REAL F2 DRIVERS (Averages between 78 and 83)
 export const REAL_F2_DRIVERS: RivalDriver[] = [
-  { name: 'Isack Hadjar', nationality: 'França 🇫🇷', category: 'f2', teamId: 'f2_invicta', ovr: 84, speed: 86, cornering: 84, defense: 82 },
-  { name: 'Paul Aron', nationality: 'Estônia 🇪🇪', category: 'f2', teamId: 'f2_mp', ovr: 83, speed: 83, cornering: 85, defense: 81 },
-  { name: 'Zane Maloney', nationality: 'Barbados 🇧🇧', category: 'f2', teamId: 'f2_cams', ovr: 82, speed: 84, cornering: 81, defense: 82 },
-  { name: 'Victor Martins', nationality: 'França 🇫🇷', category: 'f2', teamId: 'f2_mp', ovr: 82, speed: 85, cornering: 82, defense: 79 },
-  { name: 'Jak Crawford', nationality: 'Estados Unidos 🇺🇸', category: 'f2', teamId: 'f2_invicta', ovr: 81, speed: 82, cornering: 80, defense: 81 },
-  { name: 'Pepe Martí', nationality: 'Espanha 🇪🇸', category: 'f2', teamId: 'f2_cams', ovr: 80, speed: 80, cornering: 82, defense: 79 },
-  { name: 'Zak O\'Sullivan', nationality: 'Reino Unido 🇬🇧', category: 'f2', teamId: 'f2_mp', ovr: 80, speed: 81, cornering: 80, defense: 79 },
-  { name: 'Roman Staněk', nationality: 'República Tcheca 🇨🇿', category: 'f2', teamId: 'f2_cams', ovr: 79, speed: 78, cornering: 80, defense: 80 },
-  { name: 'Kush Maini', nationality: 'Índia 🇮🇳', category: 'f2', teamId: 'f2_invicta', ovr: 79, speed: 81, cornering: 78, defense: 78 },
-  { name: 'Oliver Goethe', nationality: 'Alemanha 🇩🇪', category: 'f2', teamId: 'f2_mp', ovr: 78, speed: 79, cornering: 78, defense: 77 }
+  { name: 'Isack Hadjar', nationality: 'França 🇫🇷', category: 'f2', teamId: 'f2_invicta', ovr: 83, speed: 86, cornering: 84, defense: 82, consistency: 82, starts: 81 },
+  { name: 'Paul Aron', nationality: 'Estônia 🇪🇪', category: 'f2', teamId: 'f2_mp', ovr: 82, speed: 83, cornering: 85, defense: 81, consistency: 82, starts: 79 },
+  { name: 'Zane Maloney', nationality: 'Barbados 🇧🇧', category: 'f2', teamId: 'f2_cams', ovr: 82, speed: 84, cornering: 81, defense: 82, consistency: 82, starts: 81 },
+  { name: 'Victor Martins', nationality: 'França 🇫🇷', category: 'f2', teamId: 'f2_mp', ovr: 81, speed: 85, cornering: 82, defense: 79, consistency: 80, starts: 79 },
+  { name: 'Jak Crawford', nationality: 'Estados Unidos 🇺🇸', category: 'f2', teamId: 'f2_invicta', ovr: 81, speed: 82, cornering: 80, defense: 81, consistency: 81, starts: 81 },
+  { name: 'Pepe Martí', nationality: 'Espanha 🇪🇸', category: 'f2', teamId: 'f2_cams', ovr: 80, speed: 80, cornering: 82, defense: 79, consistency: 80, starts: 79 },
+  { name: 'Zak O\'Sullivan', nationality: 'Reino Unido 🇬🇧', category: 'f2', teamId: 'f2_mp', ovr: 80, speed: 81, cornering: 80, defense: 79, consistency: 80, starts: 80 },
+  { name: 'Roman Staněk', nationality: 'República Tcheca 🇨🇿', category: 'f2', teamId: 'f2_cams', ovr: 79, speed: 78, cornering: 80, defense: 80, consistency: 79, starts: 78 },
+  { name: 'Kush Maini', nationality: 'Índia 🇮🇳', category: 'f2', teamId: 'f2_invicta', ovr: 79, speed: 81, cornering: 78, defense: 78, consistency: 79, starts: 79 },
+  { name: 'Oliver Goethe', nationality: 'Alemanha 🇩🇪', category: 'f2', teamId: 'f2_mp', ovr: 78, speed: 79, cornering: 78, defense: 77, consistency: 78, starts: 78 }
 ];
 
-// REAL F3 DRIVERS
+// REAL F3 DRIVERS (Averages between 70 and 76)
 export const REAL_F3_DRIVERS: RivalDriver[] = [
-  { name: 'Leonardo Fornaroli', nationality: 'Itália 🇮🇹', category: 'f3', teamId: 'f3_trident', ovr: 76, speed: 75, cornering: 78, defense: 76 },
-  { name: 'Gabriele Minì', nationality: 'Itália 🇮🇹', category: 'f3', teamId: 'f3_prema', ovr: 75, speed: 77, cornering: 75, defense: 74 },
-  { name: 'Arvid Lindblad', nationality: 'Reino Unido 🇬🇧', category: 'f3', teamId: 'f3_prema', ovr: 75, speed: 76, cornering: 75, defense: 73 },
-  { name: 'Luke Browning', nationality: 'Reino Unido 🇬🇧', category: 'f3', teamId: 'f3_art', ovr: 74, speed: 75, cornering: 74, defense: 74 },
-  { name: 'Dino Beganovic', nationality: 'Suécia 🇸🇪', category: 'f3', teamId: 'f3_prema', ovr: 74, speed: 73, cornering: 76, defense: 73 },
-  { name: 'Tim Tramnitz', nationality: 'Alemanha 🇩🇪', category: 'f3', teamId: 'f3_trident', ovr: 72, speed: 73, cornering: 71, defense: 72 },
-  { name: 'Noel León', nationality: 'México 🇲🇽', category: 'f3', teamId: 'f3_art', ovr: 71, speed: 71, cornering: 72, defense: 70 },
-  { name: 'Nikola Tsolov', nationality: 'Bulgária 🇧🇬', category: 'f3', teamId: 'f3_art', ovr: 71, speed: 72, cornering: 70, defense: 70 },
-  { name: 'Mari Boya', nationality: 'Espanha 🇪🇸', category: 'f3', teamId: 'f3_trident', ovr: 70, speed: 70, cornering: 71, defense: 69 }
+  { name: 'Leonardo Fornaroli', nationality: 'Itália 🇮🇹', category: 'f3', teamId: 'f3_trident', ovr: 76, speed: 75, cornering: 78, defense: 76, consistency: 76, starts: 75 },
+  { name: 'Gabriele Minì', nationality: 'Itália 🇮🇹', category: 'f3', teamId: 'f3_prema', ovr: 75, speed: 77, cornering: 75, defense: 74, consistency: 75, starts: 74 },
+  { name: 'Arvid Lindblad', nationality: 'Reino Unido 🇬🇧', category: 'f3', teamId: 'f3_prema', ovr: 75, speed: 76, cornering: 75, defense: 73, consistency: 75, starts: 76 },
+  { name: 'Luke Browning', nationality: 'Reino Unido 🇬🇧', category: 'f3', teamId: 'f3_art', ovr: 74, speed: 75, cornering: 74, defense: 74, consistency: 74, starts: 73 },
+  { name: 'Dino Beganovic', nationality: 'Suécia 🇸🇪', category: 'f3', teamId: 'f3_prema', ovr: 74, speed: 73, cornering: 76, defense: 73, consistency: 74, starts: 74 },
+  { name: 'Tim Tramnitz', nationality: 'Alemanha 🇩🇪', category: 'f3', teamId: 'f3_trident', ovr: 72, speed: 73, cornering: 71, defense: 72, consistency: 72, starts: 72 },
+  { name: 'Noel León', nationality: 'México 🇲🇽', category: 'f3', teamId: 'f3_art', ovr: 71, speed: 71, cornering: 72, defense: 70, consistency: 71, starts: 71 },
+  { name: 'Nikola Tsolov', nationality: 'Bulgária 🇧🇬', category: 'f3', teamId: 'f3_art', ovr: 71, speed: 72, cornering: 70, defense: 70, consistency: 71, starts: 72 },
+  { name: 'Mari Boya', nationality: 'Espanha 🇪🇸', category: 'f3', teamId: 'f3_trident', ovr: 70, speed: 70, cornering: 71, defense: 69, consistency: 70, starts: 70 }
 ];
 
-// KART RIVALS
+// KART RIVALS (Averages between 45 and 54)
 export const KART_RIVAL_DRIVERS: RivalDriver[] = [
-  { name: 'Enzo Rossi', nationality: 'Itália 🇮🇹', category: 'kart', teamId: 'kart_tony', ovr: 54, speed: 55, cornering: 54, defense: 52 },
-  { name: 'Lucas Vance', nationality: 'Reino Unido 🇬🇧', category: 'kart', teamId: 'kart_birel', ovr: 53, speed: 52, cornering: 55, defense: 52 },
-  { name: 'Matteo Silva', nationality: 'Brasil 🇧🇷', category: 'kart', teamId: 'kart_crg', ovr: 52, speed: 54, cornering: 51, defense: 51 },
-  { name: 'Noah Becker', nationality: 'Alemanha 🇩🇪', category: 'kart', teamId: 'kart_tony', ovr: 51, speed: 50, cornering: 52, defense: 52 },
-  { name: 'Leo Laurent', nationality: 'França 🇫🇷', category: 'kart', teamId: 'kart_birel', ovr: 50, speed: 51, cornering: 50, defense: 49 },
-  { name: 'Daniel Santos', nationality: 'Portugal 🇵🇹', category: 'kart', teamId: 'kart_crg', ovr: 49, speed: 48, cornering: 51, defense: 48 },
-  { name: 'Julian Weber', nationality: 'Áustria 🇦🇹', category: 'kart', teamId: 'kart_tony', ovr: 48, speed: 49, cornering: 47, defense: 48 },
-  { name: 'Marco Moretti', nationality: 'Itália 🇮🇹', category: 'kart', teamId: 'kart_birel', ovr: 47, speed: 47, cornering: 48, defense: 46 },
-  { name: 'Theo Martin', nationality: 'Bélgica 🇧🇪', category: 'kart', teamId: 'kart_crg', ovr: 46, speed: 48, cornering: 45, defense: 45 },
-  { name: 'Alexandre Costa', nationality: 'Brasil 🇧🇷', category: 'kart', teamId: 'kart_birel', ovr: 45, speed: 45, cornering: 46, defense: 44 }
+  { name: 'Enzo Rossi', nationality: 'Itália 🇮🇹', category: 'kart', teamId: 'kart_tony', ovr: 54, speed: 55, cornering: 54, defense: 52, consistency: 54, starts: 55 },
+  { name: 'Lucas Vance', nationality: 'Reino Unido 🇬🇧', category: 'kart', teamId: 'kart_birel', ovr: 53, speed: 52, cornering: 55, defense: 52, consistency: 53, starts: 53 },
+  { name: 'Matteo Silva', nationality: 'Brasil 🇧🇷', category: 'kart', teamId: 'kart_crg', ovr: 52, speed: 54, cornering: 51, defense: 51, consistency: 52, starts: 52 },
+  { name: 'Noah Becker', nationality: 'Alemanha 🇩🇪', category: 'kart', teamId: 'kart_tony', ovr: 51, speed: 50, cornering: 52, defense: 52, consistency: 51, starts: 50 },
+  { name: 'Leo Laurent', nationality: 'França 🇫🇷', category: 'kart', teamId: 'kart_birel', ovr: 50, speed: 51, cornering: 50, defense: 49, consistency: 50, starts: 50 },
+  { name: 'Daniel Santos', nationality: 'Portugal 🇵🇹', category: 'kart', teamId: 'kart_crg', ovr: 49, speed: 48, cornering: 51, defense: 48, consistency: 49, starts: 49 },
+  { name: 'Julian Weber', nationality: 'Áustria 🇦🇹', category: 'kart', teamId: 'kart_tony', ovr: 48, speed: 49, cornering: 47, defense: 48, consistency: 48, starts: 48 },
+  { name: 'Marco Moretti', nationality: 'Itália 🇮🇹', category: 'kart', teamId: 'kart_birel', ovr: 47, speed: 47, cornering: 48, defense: 46, consistency: 47, starts: 47 },
+  { name: 'Theo Martin', nationality: 'Bélgica 🇧🇪', category: 'kart', teamId: 'kart_crg', ovr: 46, speed: 48, cornering: 45, defense: 45, consistency: 46, starts: 46 },
+  { name: 'Alexandre Costa', nationality: 'Brasil 🇧🇷', category: 'kart', teamId: 'kart_birel', ovr: 45, speed: 45, cornering: 46, defense: 44, consistency: 45, starts: 45 }
 ];
 
+// METAS DE PATROCÍNIO PARA A TEMPORADA (3 FÁCEIS, 2 MÉDIAS, 1 DIFÍCIL)
 export const SPONSOR_CONTRACTS: SponsorContract[] = [
-  // --- TIER LOCAL (KART & F3) ---
+  // --- 3 METAS FÁCEIS ---
   {
-    id: 'sp_rival_duel',
+    id: 'goal_facil_1_points',
     name: 'Apex Fuel Energy',
     brand: 'Apex Fuel',
     logo: '⚡',
     tier: 'local',
+    difficulty: 'facil',
     category: 'all',
-    objectiveType: 'beat_rival',
-    targetValue: 0,
-    title: 'Duelo de Rivalidade',
-    description: 'Terminar a corrida à frente do seu rival de equipe ou rival direto na pista.',
-    rewardMoney: 0.45,
-    rewardXp: 3
+    objectiveType: 'points_finishes',
+    targetValue: 2,
+    title: 'Pontuar em 2 Corridas',
+    description: 'Chegar no Top 10 e pontuar em pelo menos 2 etapas do campeonato.',
+    rewardMoney: 1.20,
+    rewardXp: 4,
+    perRaceRetainer: 0.10
   },
   {
-    id: 'sp_endurance_kart',
+    id: 'goal_facil_2_pit',
     name: 'Duracool Radiators',
     brand: 'Duracool',
     logo: '🛡️',
     tier: 'local',
+    difficulty: 'facil',
     category: 'all',
-    objectiveType: 'laps_no_pit',
-    targetValue: 0, // 0 pit stops
-    title: 'Resistência Pura (Zero Box)',
-    description: 'Completar toda a prova sem realizar nenhum pit stop de pneus.',
-    rewardMoney: 0.60,
-    rewardXp: 4
+    objectiveType: 'clean_season_stints',
+    targetValue: 2,
+    title: '2 GPs com Máx 1 Pit Stop',
+    description: 'Gerenciar os pneus e completar 2 etapas com no máximo 1 pit stop.',
+    rewardMoney: 1.20,
+    rewardXp: 4,
+    perRaceRetainer: 0.10
   },
   {
-    id: 'sp_top_five',
-    name: 'Brembo Racing Pads',
-    brand: 'Brembo',
-    logo: '🔴',
-    tier: 'local',
-    category: 'all',
-    objectiveType: 'top_finish',
-    targetValue: 5,
-    title: 'Pelotão da Frente (Top 5)',
-    description: 'Cruzar a linha de chegada entre os 5 primeiros colocados (P1 a P5).',
-    rewardMoney: 0.50,
-    rewardXp: 3
-  },
-  {
-    id: 'sp_overtake_master',
+    id: 'goal_facil_3_score',
     name: 'Nitro Surge Drinks',
     brand: 'Nitro Surge',
     logo: '🔥',
     tier: 'local',
+    difficulty: 'facil',
     category: 'all',
-    objectiveType: 'gain_positions',
-    targetValue: 2,
-    title: 'Mestre da Escalada (+2 Posições)',
-    description: 'Ganhar pelo menos 2 posições na corrida em relação ao seu grid de largada.',
-    rewardMoney: 0.55,
-    rewardXp: 3
+    objectiveType: 'season_points',
+    targetValue: 15,
+    title: 'Somar 15+ Pontos no Ano',
+    description: 'Acumular no mínimo 15 pontos na classificação geral do campeonato.',
+    rewardMoney: 1.50,
+    rewardXp: 5,
+    perRaceRetainer: 0.10
   },
 
-  // --- TIER REGIONAL (F3 & F2) ---
+  // --- 2 METAS MÉDIAS ---
   {
-    id: 'sp_podium_strike',
+    id: 'goal_media_1_podiums',
     name: 'Pirelli P-Zero Pro',
     brand: 'Pirelli',
     logo: '🟡',
     tier: 'regional',
+    difficulty: 'media',
     category: 'all',
-    objectiveType: 'top_finish',
-    targetValue: 3,
-    title: 'Pódio de Honra (Top 3)',
-    description: 'Garantir um troféu no pódio terminando em 1º, 2º ou 3º lugar.',
-    rewardMoney: 1.10,
-    rewardXp: 5
+    objectiveType: 'season_podiums',
+    targetValue: 2,
+    title: 'Conquistar 2 Pódios',
+    description: 'Subir ao pódio (Top 3) em pelo menos 2 Grandes Prêmios da temporada.',
+    rewardMoney: 3.00,
+    rewardXp: 9,
+    perRaceRetainer: 0.20
   },
   {
-    id: 'sp_charge_forward',
-    name: 'Mobil 1 Super Syn',
-    brand: 'Mobil 1',
-    logo: '🚀',
-    tier: 'regional',
-    category: 'all',
-    objectiveType: 'gain_positions',
-    targetValue: 4,
-    title: 'Recuperação Épica (+4 Posições)',
-    description: 'Fazer uma corrida agressiva ganhando 4 ou mais posições após a largada.',
-    rewardMoney: 1.25,
-    rewardXp: 5
-  },
-  {
-    id: 'sp_clean_points',
+    id: 'goal_media_2_points',
     name: 'Tag Chrono Watches',
     brand: 'Tag Chrono',
     logo: '⏱️',
     tier: 'regional',
+    difficulty: 'media',
     category: 'all',
-    objectiveType: 'clean_race',
-    targetValue: 10,
-    title: 'Ritmo Pontual (Top 10)',
-    description: 'Completar a corrida com solidez sem erros e pontuar na zona do Top 10.',
-    rewardMoney: 0.85,
-    rewardXp: 3
+    objectiveType: 'season_points',
+    targetValue: 40,
+    title: 'Acumular 40+ Pontos',
+    description: 'Demonstrar constância de ponta e somar 40 ou mais pontos no Mundial.',
+    rewardMoney: 3.50,
+    rewardXp: 9,
+    perRaceRetainer: 0.20
   },
 
-  // --- TIER GLOBAL (F2 & F1) ---
+  // --- 1 META DIFÍCIL ---
   {
-    id: 'sp_victory_crown',
-    name: 'Rolex Global Precision',
+    id: 'goal_dificil_1_victory_top3',
+    name: 'Rolex & Michelin Global Elite',
     brand: 'Rolex',
     logo: '👑',
     tier: 'global',
+    difficulty: 'dificil',
     category: 'all',
-    objectiveType: 'top_finish',
+    objectiveType: 'season_wins',
     targetValue: 1,
-    title: 'Vitória Suprema (1º Lugar)',
-    description: 'Dominar o final de semana e vencer a corrida no degrau mais alto do pódio.',
-    rewardMoney: 2.50,
-    rewardXp: 8
-  },
-  {
-    id: 'sp_mega_duel',
-    name: 'Santander Premier Racing',
-    brand: 'Santander',
-    logo: '💎',
-    tier: 'global',
-    category: 'all',
-    objectiveType: 'beat_rival',
-    targetValue: 0,
-    title: 'Supremacia Absoluta sobre Rival',
-    description: 'Bater o principal rival de campeonato com vantagem na linha de chegada.',
-    rewardMoney: 1.80,
-    rewardXp: 6
-  },
-  {
-    id: 'sp_tire_strategy_pro',
-    name: 'Michelin Endurance Elite',
-    brand: 'Michelin',
-    logo: '🏁',
-    tier: 'global',
-    category: 'all',
-    objectiveType: 'laps_no_pit',
-    targetValue: 1, // Max 1 pit stop em corrida longa
-    title: 'Estratégia Econômica (Máx 1 Pit)',
-    description: 'Executar estratégia de pneus conservadora completando com no máximo 1 pit stop.',
-    rewardMoney: 1.40,
-    rewardXp: 5
+    title: 'Vitória em GP ou Top 3 Mundial',
+    description: 'Vencer pelo menos 1 corrida em 1º lugar (P1) ou encerrar a temporada no Top 3 do Mundial!',
+    rewardMoney: 6.50,
+    rewardXp: 18,
+    perRaceRetainer: 0.35
   }
 ];
+
+export const getInitialSeasonGoals = (): SponsorContract[] => {
+  return SPONSOR_CONTRACTS.map(g => ({
+    ...g,
+    currentProgress: 0,
+    isCompleted: false
+  }));
+};
+
+export interface TireDurabilityDetail {
+  compound: TireCompound;
+  minLaps: number;
+  maxLaps: number;
+  paceNote: string;
+  durabilityNote: string;
+  isOptimal: boolean;
+  idealReason: string;
+}
+
+// Function to calculate precise lap lifespan and viability for any track
+export const getTireDurabilityDetails = (track: Track): Record<TireCompound, TireDurabilityDetail> => {
+  const laps = track.laps;
+  const abrasion = track.tireAbrasion;
+  const isWet = track.weather === 'Chuva';
+
+  // Base durability in laps adjusted by track abrasion
+  // Soft: fast degradation, around 35%-45% of race distance on normal tracks, down to 25% on abrasive tracks
+  const softMax = Math.max(3, Math.round((laps * 0.44) / (abrasion * 1.05)));
+  const softMin = Math.max(2, Math.round(softMax * 0.75));
+
+  // Medium: balanced, around 65%-75% of race distance
+  const medMax = Math.max(5, Math.round((laps * 0.72) / abrasion));
+  const medMin = Math.max(4, Math.round(medMax * 0.8));
+
+  // Hard: ultra durable, around 110%-130% of race distance (can run whole race without stopping)
+  const hardMax = Math.max(8, Math.round((laps * 1.25) / abrasion));
+  const hardMin = Math.max(6, Math.round(hardMax * 0.82));
+
+  // Determine optimal compound based on track conditions:
+  // 1. Wet track: Medium is optimal (grooved water evacuation)
+  // 2. High abrasion track (abrasion >= 1.08 or long GP like Sakhir, Silverstone, Interlagos): Hard is optimal!
+  //    Soft tires degrade too fast and cost 2-3s/lap penalty or multiple pits.
+  // 3. Low abrasion track (abrasion <= 0.98 like Monaco, Monza, Canada, Jeddah): Soft is optimal!
+  //    Tires don't wear out fast and Soft's +0.7s/lap pace dominates.
+  // 4. Balanced tracks: Medium is optimal.
+  let optimalCompound: TireCompound = 'Médio';
+  if (isWet) {
+    optimalCompound = 'Médio';
+  } else if (abrasion >= 1.08 || track.id === 'f1_bahrain' || track.id === 'f1_silverstone' || track.id === 'f1_interlagos' || track.id === 'f3_silverstone' || track.id === 'f2_silverstone') {
+    optimalCompound = 'Duro';
+  } else if (abrasion <= 0.98 || track.id === 'f1_monaco' || track.id === 'f1_monza' || track.id === 'f1_canada' || track.id === 'f1_jeddah' || track.id === 'kart_genk') {
+    optimalCompound = 'Macio';
+  } else {
+    optimalCompound = 'Médio';
+  }
+
+  return {
+    Macio: {
+      compound: 'Macio',
+      minLaps: softMin,
+      maxLaps: softMax,
+      paceNote: '+0.5s a +0.8s mais rápido por volta',
+      durabilityNote: `Duração: ${softMin} a ${softMax} voltas (Degradação Rápida)`,
+      isOptimal: optimalCompound === 'Macio',
+      idealReason: optimalCompound === 'Macio'
+        ? 'Traçado com baixo desgaste de asfalto! O pneu Macio entrega vantagem brutal de aderência e velocidade sem colapsar a borracha.'
+        : 'Em asfalto abrasivo, o pneu Macio sofrerá superaquecimento após poucas voltas, exigindo 2 pit stops.'
+    },
+    Médio: {
+      compound: 'Médio',
+      minLaps: medMin,
+      maxLaps: medMax,
+      paceNote: 'Ritmo padrão equilibrado',
+      durabilityNote: `Duração: ${medMin} a ${medMax} voltas (Janela Ideal para 1 Parada)`,
+      isOptimal: optimalCompound === 'Médio',
+      idealReason: isWet 
+        ? 'Asfalto molhado! O composto Médio fornece a melhor drenagem e equilíbrio para evitar rodadas.' 
+        : 'Janela de corrida perfeita: permite 1 parada programada com excelente ritmo de volta em curvas.'
+    },
+    Duro: {
+      compound: 'Duro',
+      minLaps: hardMin,
+      maxLaps: hardMax,
+      paceNote: '-0.3s a -0.5s mais lento por volta',
+      durabilityNote: `Duração: ${hardMin} a ${hardMax}+ voltas (Suporta a corrida toda sem parar)`,
+      isOptimal: optimalCompound === 'Duro',
+      idealReason: optimalCompound === 'Duro'
+        ? `Asfalto altamente abrasivo (${abrasion}x)! O pneu Duro é a arma vencedora: mantém consistência por ${hardMin}+ voltas e economiza 20s+ de pit stop!`
+        : 'Pneu muito rígido para pistas de baixa abrasão; demorará para aquecer e renderá menos aderência.'
+    }
+  };
+};
 
 export interface TeamTireAdvice {
   recommendedTire: TireCompound;
@@ -764,6 +1042,7 @@ export interface TeamTireAdvice {
 }
 
 export const getTeamTireAdvice = (track: Track): TeamTireAdvice => {
+  const details = getTireDurabilityDetails(track);
   if (track.weather === 'Chuva') {
     return {
       recommendedTire: 'Médio',
@@ -773,51 +1052,131 @@ export const getTeamTireAdvice = (track: Track): TeamTireAdvice => {
     };
   }
 
-  // Highly abrasive track
-  if (track.tireAbrasion >= 1.12) {
-    if (track.laps >= 14) {
-      return {
-        recommendedTire: 'Duro',
-        title: 'Alta Abrasão & Corrida Longa',
-        reason: `Asfalto extremamente agressivo (${track.tireAbrasion}x) ao longo de ${track.laps} voltas. O pneu Duro é a melhor arma para tentar 0 a 1 pit stop sem sofrer colapso de borracha no fim.`,
-        badgeStyle: 'bg-slate-700/50 text-slate-200 border-slate-500/40'
-      };
-    }
+  if (details.Duro.isOptimal) {
     return {
-      recommendedTire: 'Médio',
-      title: 'Abrasão Elevada',
-      reason: `Circuito de alta degradação (${track.tireAbrasion}x). O pneu Médio oferece velocidade consistente e encaixa perfeitamente na janela da nossa parada automática programada.`,
-      badgeStyle: 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+      recommendedTire: 'Duro',
+      title: 'Alta Abrasão · Pneu Duro Ideal',
+      reason: `Asfalto extremamente agressivo (${track.tireAbrasion}x) ao longo de ${track.laps} voltas. Pneus Macios colapsam em poucas voltas. O pneu Duro aguenta ${details.Duro.minLaps}-${details.Duro.maxLaps} voltas e permite vencer economizando paradas no box!`,
+      badgeStyle: 'bg-slate-700/50 text-slate-200 border-slate-500/40'
     };
   }
 
-  // High speed straight track with moderate/low abrasion
-  if (track.profileType === 'Alta Velocidade (Retas)' || track.straightWeight >= 0.42) {
-    if (track.tireAbrasion <= 1.05) {
-      return {
-        recommendedTire: 'Macio',
-        title: 'Traçado de Velocidade Pura',
-        reason: 'Pista veloz com retas amplas e desgaste brando! O pneu Macio proporcionará vantagem de aceleração imediata para abrir margem ou buscar ultrapassagens nas primeiras voltas.',
-        badgeStyle: 'bg-red-500/20 text-red-300 border-red-500/40'
-      };
-    }
-  }
-
-  // Technical or street track with high cornering
-  if (track.profileType === 'Técnico (Muitas Curvas)' || track.cornerWeight >= 0.45) {
+  if (details.Macio.isOptimal) {
     return {
-      recommendedTire: 'Médio',
-      title: 'Traçado Técnico e Travado',
-      reason: 'Muitas curvas exigem estabilidade de chassi constante. O pneu Médio aguenta as frenagens fortes e mudanças de direção sem superaquecer.',
-      badgeStyle: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+      recommendedTire: 'Macio',
+      title: 'Baixa Degradação · Pneu Macio Ideal',
+      reason: `Traçado veloz com asfalto suave (${track.tireAbrasion}x). O pneu Macio suporta até ${details.Macio.maxLaps} voltas com ganho de +0.7s/volta de velocidade pura, sendo a estratégia mais veloz para a vitória!`,
+      badgeStyle: 'bg-red-500/20 text-red-300 border-red-500/40'
     };
   }
 
-  // Default balanced
   return {
     recommendedTire: 'Médio',
-    title: 'Estratégia Recomendada Padrão',
-    reason: 'Configuração mista e equilibrada. O composto Médio é a nossa recomendação oficial: ótimo ritmo inicial com durabilidade segura até o pit stop automático.',
+    title: 'Estratégia Equilibrada · Pneu Médio',
+    reason: `Configuração mista e equilibrada. O pneu Médio dura ${details.Médio.minLaps} a ${details.Médio.maxLaps} voltas, encaixando perfeitamente na estratégia de 1 parada rápida.`,
     badgeStyle: 'bg-amber-500/20 text-amber-300 border-amber-500/40'
   };
 };
+
+export const CAREER_MILESTONES: CareerMilestone[] = [
+  {
+    id: 'first_win',
+    title: 'Primeira Vitória',
+    description: 'Vença sua primeira corrida oficial na carreira.',
+    conditionType: 'wins',
+    targetValue: 1,
+    rewardMoney: 1.0,
+    rewardXp: 8,
+    categoryTag: 'Vitórias & Pódios'
+  },
+  {
+    id: 'poles_5',
+    title: '5 Pole Positions',
+    description: 'Conquiste 5 pole positions oficiais na carreira.',
+    conditionType: 'poles',
+    targetValue: 5,
+    rewardMoney: 1.8,
+    rewardXp: 10,
+    categoryTag: 'Vitórias & Pódios'
+  },
+  {
+    id: 'podiums_10',
+    title: '10 Pódios na Carreira',
+    description: 'Suba ao pódio (Top 3) em 10 corridas ao longo da sua trajetória.',
+    conditionType: 'podiums',
+    targetValue: 10,
+    rewardMoney: 2.5,
+    rewardXp: 12,
+    categoryTag: 'Vitórias & Pódios'
+  },
+  {
+    id: 'podiums_25',
+    title: 'Lenda dos Pódios (25 Pódios)',
+    description: 'Acumule 25 pódios de prestígio no automobilismo.',
+    conditionType: 'podiums',
+    targetValue: 25,
+    rewardMoney: 6.0,
+    rewardXp: 20,
+    categoryTag: 'Vitórias & Pódios'
+  },
+  {
+    id: 'first_championship',
+    title: 'Primeira Vitória no Campeonato',
+    description: 'Conquiste seu primeiro título de Campeão da temporada.',
+    conditionType: 'championships',
+    targetValue: 1,
+    rewardMoney: 5.0,
+    rewardXp: 25,
+    categoryTag: 'Evolução & Títulos'
+  },
+  {
+    id: 'races_10',
+    title: 'Estreante de Garra',
+    description: 'Dispute 10 corridas no automobilismo profissional.',
+    conditionType: 'races',
+    targetValue: 10,
+    rewardMoney: 0.8,
+    rewardXp: 5,
+    categoryTag: 'Experiência & Riqueza'
+  },
+  {
+    id: 'races_30',
+    title: 'Veterano das Pistas',
+    description: 'Dispute 30 Grandes Prêmios ao longo da sua carreira.',
+    conditionType: 'races',
+    targetValue: 30,
+    rewardMoney: 3.0,
+    rewardXp: 15,
+    categoryTag: 'Experiência & Riqueza'
+  },
+  {
+    id: 'ovr_80',
+    title: 'Mestre da Telemetria',
+    description: 'Alcance uma Média FIA de 80 OVR ou mais.',
+    conditionType: 'driver_ovr',
+    targetValue: 80,
+    rewardMoney: 2.0,
+    rewardXp: 15,
+    categoryTag: 'Evolução & Títulos'
+  },
+  {
+    id: 'reach_f1',
+    title: 'Chegada à Fórmula 1',
+    description: 'Alcance o topo do automobilismo e ingresse na categoria F1.',
+    conditionType: 'category_f1',
+    targetValue: 1,
+    rewardMoney: 10.0,
+    rewardXp: 40,
+    categoryTag: 'Evolução & Títulos'
+  },
+  {
+    id: 'millionaire',
+    title: 'Magnata das Pistas',
+    description: 'Acumule $15.0M ou mais no seu orçamento bancário.',
+    conditionType: 'money',
+    targetValue: 15,
+    rewardMoney: 2.5,
+    rewardXp: 20,
+    categoryTag: 'Experiência & Riqueza'
+  }
+];

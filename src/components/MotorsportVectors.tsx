@@ -384,60 +384,96 @@ interface TrackMapVectorProps {
   isRacing?: boolean;
   playerColor?: string;
   className?: string;
+  showDirectionArrow?: boolean;
 }
 
 export function TrackMapVector({
   svgPath,
-  accentColor = '#e10600',
+  accentColor = '#e6ff55',
   isRacing = false,
-  playerColor = '#e10600',
-  className = 'w-full h-36'
+  playerColor = '#e6ff55',
+  className = 'w-full h-36',
+  showDirectionArrow = true
 }: TrackMapVectorProps) {
   return (
     <svg viewBox="0 0 300 170" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-      {/* Subtle asphalt outer glow/curbs */}
+      <defs>
+        <filter id="track-glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+        <marker 
+          id="pink-arrow" 
+          viewBox="0 0 10 10" 
+          refX="5" 
+          refY="5" 
+          markerWidth="6" 
+          markerHeight="6" 
+          orient="auto-start-reverse"
+        >
+          <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#ff5f8f" />
+        </marker>
+      </defs>
+
+      {/* Track base dark shadow */}
       <path
         d={svgPath}
-        stroke="#1e293b"
+        stroke="#15151c"
         strokeWidth="14"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      {/* Main tarmac line */}
+      {/* Track surface dark line */}
       <path
         d={svgPath}
-        stroke="#475569"
-        strokeWidth="8"
+        stroke="#262633"
+        strokeWidth="7"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      {/* Racing line highlight */}
+      {/* Electric Yellow Racing line with subtle neon glow */}
       <path
         id="circuit-racing-line"
         d={svgPath}
         stroke={accentColor}
-        strokeWidth="2.5"
-        strokeDasharray="6 4"
+        strokeWidth="3"
         strokeLinecap="round"
         strokeLinejoin="round"
-        strokeOpacity="0.85"
+        filter="url(#track-glow)"
       />
+
+      {/* Start / Finish Checkered line mark */}
+      <circle cx="55" cy="135" r="3.5" fill="#ffffff" stroke="#ff5f8f" strokeWidth="2" />
+
+      {/* Direction indicator arrow when not racing */}
+      {showDirectionArrow && !isRacing && (
+        <path
+          d={svgPath}
+          stroke="transparent"
+          strokeWidth="1"
+          markerMid="url(#pink-arrow)"
+          strokeDasharray="1 160"
+        />
+      )}
 
       {/* Live animated cars on track when racing */}
       {isRacing && (
         <>
           {/* Rival pack dots */}
-          <circle r="4.5" fill="#38bdf8" stroke="#0f172a" strokeWidth="1.5">
+          <circle r="4" fill="#38bdf8" stroke="#070709" strokeWidth="1.5">
             <animateMotion dur="5.2s" repeatCount="indefinite" path={svgPath} />
           </circle>
-          <circle r="4.5" fill="#facc15" stroke="#0f172a" strokeWidth="1.5">
+          <circle r="4" fill="#ff5f8f" stroke="#070709" strokeWidth="1.5">
             <animateMotion dur="5.6s" begin="-1.4s" repeatCount="indefinite" path={svgPath} />
           </circle>
-          <circle r="4.5" fill="#a855f7" stroke="#0f172a" strokeWidth="1.5">
+          <circle r="4" fill="#a855f7" stroke="#070709" strokeWidth="1.5">
             <animateMotion dur="6.0s" begin="-2.8s" repeatCount="indefinite" path={svgPath} />
           </circle>
-          {/* Player dot */}
-          <circle r="6" fill={playerColor} stroke="#ffffff" strokeWidth="2">
+          {/* Player dot in bright glowing acid yellow */}
+          <circle r="6" fill="#e6ff55" stroke="#ffffff" strokeWidth="2">
             <animateMotion dur="5.4s" begin="-0.7s" repeatCount="indefinite" path={svgPath} />
           </circle>
         </>

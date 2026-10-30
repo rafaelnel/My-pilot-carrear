@@ -20,6 +20,7 @@ export interface Team {
   reliability: number;     
   bonusType: string;
   prestige: number;        
+  attributeBonuses?: Partial<DriverAttributes>;
 }
 
 export type WeatherCondition = 'Seco' | 'Nublado' | 'Chuva';
@@ -56,12 +57,16 @@ export interface SeasonHistoryEntry {
   promoted: boolean;
 }
 
+export type SponsorDifficulty = 'facil' | 'media' | 'dificil';
+
 export type SponsorObjectiveType = 
-  | 'beat_rival'       // Chegar à frente de um rival específico
-  | 'laps_no_pit'      // Completar a corrida sem pit stop (ou no máximo 1)
-  | 'top_finish'       // Chegar no Top X (ex: Top 3, Top 5)
-  | 'gain_positions'   // Ganhar pelo menos X posições na corrida
-  | 'clean_race';      // Corrida limpa terminando na zona de pontos (Top 10)
+  | 'season_podiums'      // Conquistar X pódios na temporada
+  | 'season_wins'         // Vencer X corridas na temporada
+  | 'season_points'       // Conquistar X pontos no campeonato mundial
+  | 'season_top_pos'      // Terminar a temporada no Top X (ex: Top 3, Top 5)
+  | 'beat_rival_season'   // Terminar a temporada à frente do Rival no Mundial
+  | 'points_finishes'     // Pontuar (Top 10) em pelo menos X corridas da temporada
+  | 'clean_season_stints'; // Completar X corridas com no máximo 1 pit stop
 
 export interface SponsorContract {
   id: string;
@@ -69,14 +74,37 @@ export interface SponsorContract {
   brand: string;
   logo: string;
   tier: 'local' | 'regional' | 'global';
+  difficulty: SponsorDifficulty;
   category: MotorsportCategory | 'all';
   objectiveType: SponsorObjectiveType;
   targetValue: number;
   targetRivalName?: string;
   title: string;
   description: string;
-  rewardMoney: number; // Em Milhões ($ M)
-  rewardXp: number;    // Pontos de Treino (XP)
+  rewardMoney: number; // Em Milhões ($ M) - Bônus de fim de temporada
+  rewardXp: number;    // Pontos de Treino (XP) - Bônus de fim de temporada
+  perRaceRetainer?: number; // Estipêndio fixo pago por corrida ($ M)
+  currentProgress?: number; // Progresso atual na temporada
+  isCompleted?: boolean;
+}
+
+export interface SeasonAutosave {
+  season: number;
+  category: MotorsportCategory;
+  teamId: string;
+  attributes: DriverAttributes;
+  money: number;
+  reputation: number;
+  savedAt: string;
+}
+
+export interface GameSettings {
+  soundEnabled: boolean;
+  soundVolume: number;
+  isWidescreenMode: boolean;
+  simulationSpeed: 1 | 2;
+  autosaveNotifications: boolean;
+  aiDifficulty: 'Normal' | 'Desafiador' | 'Hardcore';
 }
 
 export interface Driver {
@@ -101,6 +129,7 @@ export interface Driver {
     points: number;
   };
   seasonHistory: SeasonHistoryEntry[];
+  seasonAutosaves?: SeasonAutosave[]; // Autosaves automáticos ao início de todo novo ano
   // Slot persistence data
   currentSeason?: number;
   currentRaceIndex?: number;
@@ -108,12 +137,35 @@ export interface Driver {
   savedDriverStandings?: DriverStanding[];
   savedConstructorStandings?: ConstructorStanding[];
   activeSponsors?: SponsorContract[];
+  seasonGoals?: SponsorContract[];
   sponsorshipEarnings?: {
     money: number;
     xp: number;
     completedCount: number;
   };
+  claimedMilestones?: string[]; // IDs das conquistas resgatadas
   lastSaved?: string;
+}
+
+export type MilestoneConditionType =
+  | 'podiums'        // Total de pódios na carreira
+  | 'poles'          // Total de pole positions na carreira
+  | 'wins'           // Total de vitórias na carreira
+  | 'races'          // Total de corridas disputadas na carreira
+  | 'championships'  // Títulos de campeonato conquistados
+  | 'driver_ovr'     // Média OVR dos atributos do piloto
+  | 'money'          // Saldo bancário em milhões ($ M)
+  | 'category_f1';   // Alcançar a Fórmula 1
+
+export interface CareerMilestone {
+  id: string;
+  title: string;
+  description: string;
+  conditionType: MilestoneConditionType;
+  targetValue: number;
+  rewardMoney: number; // Em Milhões ($ M)
+  rewardXp: number;    // Pontos de Treino (XP)
+  categoryTag: 'Vitórias & Pódios' | 'Evolução & Títulos' | 'Experiência & Riqueza';
 }
 
 export interface RivalDriver {
@@ -125,6 +177,8 @@ export interface RivalDriver {
   speed: number;
   cornering: number;
   defense: number;
+  consistency?: number;
+  starts?: number;
 }
 
 export interface QualifyingResult {
@@ -140,10 +194,14 @@ export interface LiveRaceCar {
   teamId: string;
   pos: number;
   prevPos: number;
+  startGridPos: number;
   isPlayer: boolean;
   gap: string;
   cumulativeTime: number;
   lastLapTime: string;
+  bestLapSeconds: number;
+  bestLapTimeStr: string;
+  overtakesCount: number;
   tireHealth: number;       // 0 to 100
   tireCompound: TireCompound;
   pitStops: number;
