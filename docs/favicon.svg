@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="helmetShell" x1="8" y1="8" x2="56" y2="54" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FF2800" />
+      <stop offset="55%" stop-color="#DC143C" />
+      <stop offset="100%" stop-color="#8B0000" />
+    </linearGradient>
+    <linearGradient id="visorGrad" x1="22" y1="22" x2="58" y2="38" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="50%" stop-color="#1E293B" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+    <linearGradient id="visorGlare" x1="26" y1="24" x2="52" y2="32" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.85" />
+      <stop offset="50%" stop-color="#FACC15" stop-opacity="0.65" />
+      <stop offset="100%" stop-color="#EF4444" stop-opacity="0" />
+    </linearGradient>
+    <linearGradient id="goldStripe" x1="10" y1="18" x2="48" y2="46" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FDE047" />
+      <stop offset="100%" stop-color="#CA8A04" />
+    </linearGradient>
+  </defs>
+
+  <!-- Rear aerodynamic spoiler fin -->
+  <path d="M6 26L14 16L16 32L8 34Z" fill="#991B1B" />
+
+  <!-- Main F1 Helmet Shell -->
+  <path d="M10 34C10 17.5 22.5 8 37 8C48.5 8 56 15.5 57.5 24.5L32 25.5L30 37L57.5 36.5C57 44.5 52.5 51 44 53L18 53C13 51 10 43.5 10 34Z" fill="url(#helmetShell)" stroke="#F8FAFC" stroke-width="1.5" stroke-linejoin="round" />
+
+  <!-- Racing Gold & White Aerodynamic Stripes -->
+  <path d="M14 22C21 15 32 12 48 14.5L52 18.5C35 16.5 23 19 12 27.5Z" fill="url(#goldStripe)" />
+  <path d="M12 43L40 43L46 47L14 47Z" fill="#F8FAFC" fill-opacity="0.9" />
+
+  <!-- Carbon Fiber Chin Diffuser / Base -->
+  <path d="M16 50H47C44.5 53.5 40.5 55 34 55H21C18 55 16.5 52.5 16 50Z" fill="#18181B" stroke="#3F3F46" stroke-width="1" />
+
+  <!-- Visor Opening & Dark Tinted Visor -->
+  <path d="M29 23.5L57.5 23C59 27.5 59 33 57.5 37.5L28.5 38C25.5 36 25.5 26 29 23.5Z" fill="url(#visorGrad)" stroke="#E2E8F0" stroke-width="1.5" stroke-linejoin="round" />
+
+  <!-- Iridescent Visor Tear-off Reflection -->
+  <path d="M31 26.5L55.5 26C56 28.5 56 30.5 55.5 32L30.5 32.5C29 30.5 29.5 28 31 26.5Z" fill="url(#visorGlare)" />
+
+  <!-- Visor Top Strip (Zylon Banner) -->
+  <path d="M29.5 23.5L57.2 23L57.8 25.8L28.5 26.5Z" fill="#FACC15" />
+
+  <!-- Visor Pivot Screw / Hinge -->
+  <circle cx="29.5" cy="31" r="3" fill="#E2E8F0" stroke="#0F172A" stroke-width="1.5" />
+  <circle cx="29.5" cy="31" r="1" fill="#EF4444" />
+</svg>
