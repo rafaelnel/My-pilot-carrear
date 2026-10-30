@@ -5,7 +5,7 @@ import {
   ArrowUpRight, RotateCcw, Newspaper, Timer, User, Calendar, BarChart2, 
   PlusCircle, Trash2, Palette, Wrench, Shield, Flame, AlertTriangle, History, FastForward,
   Target, CheckCircle2, CloudRain, Cloud, Sun, Briefcase, Radio, Headphones, DollarSign, Sparkles, Flag, ChevronUp, ChevronDown,
-  Crown, Gift, Lock, Check, Save, LogOut, Settings
+  Crown, Gift, Lock, Check, Save, LogOut, Settings, Swords, TrendingUp, ShieldAlert
 } from 'lucide-react';
 import { 
   Driver, Track, DriverStanding, ConstructorStanding, RaceEvent, 
@@ -1165,23 +1165,57 @@ export default function App() {
             car.overtakesCount = (car.overtakesCount || 0) + posDiff;
             car.statusTag = `⬆️+${posDiff}`;
             const overtakenCar = cars[idx + 1];
-            if (car.isPlayer) {
+            const isPlayerAttacker = car.isPlayer;
+            const isPlayerDefender = overtakenCar?.isPlayer;
+            const isPlayerInvolved = isPlayerAttacker || isPlayerDefender;
+
+            const struggleDescriptions = [
+              "Freada tardia e mergulho agressivo por dentro!",
+              "Vácuo fulminante e lado a lado na reta!",
+              "Grip superior e aceleração total na saída de curva!",
+              "Bote cirúrgico em alta velocidade no ponto de frenagem!",
+              "Pressão contínua, xadrez de pista e manobra impecável!"
+            ];
+            const struggleText = struggleDescriptions[(lap + idx) % struggleDescriptions.length];
+
+            if (isPlayerAttacker) {
               lapEvents.push({
                 lap,
-                description: `🔥 ULTRAPASSAGEM! ${car.driverName} superou ${overtakenCar?.driverName || 'rival'} e assumiu a P${newPos}!`,
-                type: 'overtake'
+                description: `🔥 ULTRAPASSAGEM SENSACIONAL! Você superou ${overtakenCar?.driverName || 'o rival'} e assumiu a P${newPos}! (${struggleText})`,
+                type: 'overtake',
+                attackerName: car.driverName,
+                defenderName: overtakenCar?.driverName || 'Rival',
+                attackerTeamId: car.teamId,
+                defenderTeamId: overtakenCar?.teamId,
+                isPlayerInvolved: true,
+                newPosition: newPos,
+                intensity: 'extreme'
               });
-            } else if (overtakenCar?.isPlayer) {
+            } else if (isPlayerDefender) {
               lapEvents.push({
                 lap,
-                description: `⚠️ ${car.driverName} ultrapassou você para a P${newPos}!`,
-                type: 'overtake'
+                description: `⚠️ PRESSÃO NO PADDOCK! ${car.driverName} te ultrapassou e assumiu a P${newPos}! (${struggleText})`,
+                type: 'overtake',
+                attackerName: car.driverName,
+                defenderName: 'Você',
+                attackerTeamId: car.teamId,
+                defenderTeamId: overtakenCar?.teamId || car.teamId,
+                isPlayerInvolved: true,
+                newPosition: newPos,
+                intensity: 'extreme'
               });
-            } else if (newPos <= 4 && lapEvents.length < 2) {
+            } else if (newPos <= 6 && lapEvents.length < 3) {
               lapEvents.push({
                 lap,
-                description: `⚔️ ${car.driverName} ultrapassa ${overtakenCar?.driverName} pela P${newPos}!`,
-                type: 'overtake'
+                description: `⚔️ LUTA DE WHEEL-TO-WHEEL! ${car.driverName} ultrapassa ${overtakenCar?.driverName || 'o rival'} pela P${newPos}! (${struggleText})`,
+                type: 'overtake',
+                attackerName: car.driverName,
+                defenderName: overtakenCar?.driverName || 'Rival',
+                attackerTeamId: car.teamId,
+                defenderTeamId: overtakenCar?.teamId,
+                isPlayerInvolved: false,
+                newPosition: newPos,
+                intensity: 'intense'
               });
             }
           } else if (!car.inPit && posDiff < 0) {
@@ -4660,28 +4694,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* TOP 3 PROMOTION GOAL BANNER (EXCLUSIVELY APPEARS DURING RACE) */}
-          <div className="bg-[#14141c] border border-white/10 rounded-2xl p-2 px-3 sm:px-4 shrink-0 shadow-xl flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
-            <div className="flex items-center gap-2 min-w-0">
-              <Target className="w-4 h-4 text-[#ff5f8f] shrink-0" />
-              <span className="font-display font-black italic uppercase text-[#ff5f8f] tracking-wider text-[10px] sm:text-[11px] truncate">
-                {isInTop3 
-                  ? `🔥 ZONA DE PROMOÇÃO GARANTIDA (P${currentPlayerRank} · +${pointsDiffToTarget} PTS SOBRE O 4º)`
-                  : `🎯 META DE PROMOÇÃO TOP 3: ${top3ProgressPercentage}% (${playerPoints} PTS vs ${thirdPlacePoints} PTS DO 3º COLOCADO)`}
-              </span>
-            </div>
-            <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-              <span className="text-[#8e8e9c] text-[10px] hidden sm:inline">
-                3º Lugar: <strong className="text-white">{sortedSeasonStandings[2]?.driverName || '-'} ({thirdPlacePoints} pts)</strong>
-              </span>
-              <div className="w-24 sm:w-36 h-2 bg-[#070709] rounded-full overflow-hidden border border-white/10">
-                <div
-                  className={`h-full transition-all duration-500 ${isInTop3 ? 'bg-[#e6ff55]' : 'bg-[#ff5f8f]'}`}
-                  style={{ width: `${top3ProgressPercentage}%` }}
-                />
-              </div>
-            </div>
-          </div>
+
 
           {/* 2. DESKTOP 12-COLUMN PIT WALL WORKSPACE */}
           <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-2.5 sm:gap-3 overflow-y-auto lg:overflow-hidden">
@@ -4795,22 +4808,78 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Desktop Live Race Radio Feed Log */}
-                <div className="hidden lg:flex flex-1 min-h-[120px] bg-[#14141c] border border-white/10 rounded-2xl p-3 flex-col shadow-lg overflow-hidden">
-                  <div className="flex items-center gap-2 text-xs font-display font-black italic uppercase text-[#e6ff55] mb-1.5 shrink-0">
-                    <Radio className="w-4 h-4 animate-pulse" />
-                    <span>RÁDIO DA CORRIDA // FEED AO VIVO</span>
+                {/* Desktop Live Race Radio Feed Log with Overtake Struggle Highlights */}
+                <div className="hidden lg:flex flex-1 min-h-[140px] bg-[#14141c] border border-white/10 rounded-2xl p-3 flex-col shadow-lg overflow-hidden">
+                  <div className="flex items-center justify-between text-xs font-display font-black italic uppercase text-[#e6ff55] mb-2 shrink-0 border-b border-white/5 pb-1.5">
+                    <div className="flex items-center gap-2">
+                      <Radio className="w-4 h-4 animate-pulse text-[#e6ff55]" />
+                      <span>RÁDIO DA CORRIDA // FEED AO VIVO</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-[#8e8e9c] font-normal">
+                      ULTIMAS VOLTAS
+                    </span>
                   </div>
-                  <div className="flex-1 overflow-y-auto space-y-1 pr-1 font-mono text-xs">
+
+                  <div className="flex-1 overflow-y-auto space-y-2 pr-1 font-mono text-xs custom-scrollbar">
                     {raceEventsLog.length > 0 ? (
-                      raceEventsLog.slice(0, 8).map((ev, i) => (
-                        <div key={i} className={`p-1.5 rounded-xl border ${i === 0 ? 'bg-[#1e1e2c] border-[#e6ff55]/40 text-white' : 'bg-[#070709] border-white/5 text-[#8e8e9c]'}`}>
-                          <span className="text-[#e6ff55] font-bold mr-1.5">[V{ev.lap}]</span>
-                          <span>{ev.description}</span>
-                        </div>
-                      ))
+                      raceEventsLog.slice(0, 8).map((ev, i) => {
+                        const isOvertake = ev.type === 'overtake';
+                        const isPlayer = ev.isPlayerInvolved;
+
+                        if (isOvertake) {
+                          return (
+                            <motion.div
+                              key={i}
+                              initial={{ opacity: 0, scale: 0.94, x: -12 }}
+                              animate={{ opacity: 1, scale: 1, x: 0 }}
+                              transition={{ type: "spring", stiffness: 420, damping: 26 }}
+                              className={`p-2.5 rounded-xl border relative overflow-hidden transition-all shadow-md ${
+                                isPlayer
+                                  ? 'bg-gradient-to-r from-[#ff003b]/30 via-[#2a1a24] to-[#14141c] border-[#e6ff55] ring-1 ring-[#e6ff55]/60 shadow-[0_0_20px_rgba(230,255,85,0.25)]'
+                                  : 'bg-gradient-to-r from-amber-500/20 via-[#191924] to-[#070709] border-amber-500/50 text-white'
+                              }`}
+                            >
+                              {/* Background ambient flame glow */}
+                              <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-[#e6ff55]/10 rounded-full blur-xl pointer-events-none" />
+
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#e6ff55]">
+                                  <Swords className="w-3.5 h-3.5 text-[#ff5f8f] animate-pulse" />
+                                  <span>[V{ev.lap}] LUTA POR POSIÇÃO</span>
+                                </div>
+                                {ev.newPosition && (
+                                  <span className="text-[10px] font-display font-black italic px-2 py-0.5 rounded bg-[#e6ff55] text-black shadow-sm">
+                                    P{ev.newPosition}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="text-xs font-bold text-white leading-snug flex items-start gap-1.5">
+                                <Flame className="w-4 h-4 text-[#e6ff55] shrink-0 mt-0.5" />
+                                <span>{ev.description}</span>
+                              </div>
+                            </motion.div>
+                          );
+                        }
+
+                        return (
+                          <div
+                            key={i}
+                            className={`p-1.5 px-2.5 rounded-xl border transition-colors ${
+                              i === 0
+                                ? 'bg-[#1e1e2c] border-[#e6ff55]/40 text-white'
+                                : 'bg-[#070709] border-white/5 text-[#8e8e9c]'
+                            }`}
+                          >
+                            <span className="text-[#e6ff55] font-bold mr-1.5">[V{ev.lap}]</span>
+                            <span>{ev.description}</span>
+                          </div>
+                        );
+                      })
                     ) : (
-                      <div className="text-[#8e8e9c] p-2">Luzes verdes! Corrida em andamento...</div>
+                      <div className="text-[#8e8e9c] p-2 font-mono text-xs">
+                        Luzes verdes! Corrida em andamento...
+                      </div>
                     )}
                   </div>
                 </div>
@@ -4842,13 +4911,19 @@ export default function App() {
                     ? 'bg-[#ff5f8f] text-black font-bold' 
                     : 'bg-[#191924] text-[#8e8e9c] font-medium';
 
+                  const isOvertakingCar = car.statusTag?.startsWith('⬆️');
+                  const gapNum = parseFloat(car.gap.replace('+', '').replace('s', '')) || 0;
+                  const isWheelToWheelBattle = car.pos > 1 && gapNum > 0 && gapNum <= 0.35;
+
                   return (
                     <motion.div 
                       key={car.driverName}
                       layout
                       transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                      className={`px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl border flex items-center justify-between gap-2 text-xs sm:text-sm transition-colors ${
-                        car.isPlayer 
+                      className={`px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl border flex items-center justify-between gap-2 text-xs sm:text-sm transition-all ${
+                        isOvertakingCar
+                          ? 'bg-gradient-to-r from-[#1e1e2c] via-[#2a1a24] to-[#14141c] border-[#e6ff55] text-white font-bold shadow-[0_0_20px_rgba(230,255,85,0.3)] ring-2 ring-[#e6ff55]/60'
+                          : car.isPlayer 
                           ? 'bg-[#1e1e2c] border-[#e6ff55] text-white font-bold shadow-lg ring-1 ring-[#e6ff55]/40' 
                           : 'bg-[#070709] border-white/5 text-slate-300'
                       }`}
@@ -4867,7 +4942,24 @@ export default function App() {
                             VOCÊ
                           </span>
                         )}
-                        {car.statusTag && (
+                        {isOvertakingCar && (
+                          <motion.span
+                            initial={{ scale: 0.8 }}
+                            animate={{ scale: [1, 1.1, 1] }}
+                            transition={{ repeat: Infinity, duration: 1.2 }}
+                            className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-[#e6ff55] text-black shrink-0 font-display font-black italic uppercase shadow-md flex items-center gap-1"
+                          >
+                            <Flame className="w-3 h-3 fill-current" />
+                            <span>{car.statusTag}</span>
+                          </motion.span>
+                        )}
+                        {!isOvertakingCar && isWheelToWheelBattle && (
+                          <span className="text-[8px] sm:text-[9px] px-1.5 py-0.5 rounded-full bg-[#ff5f8f]/20 text-[#ff5f8f] shrink-0 border border-[#ff5f8f]/40 font-mono font-bold flex items-center gap-1 animate-pulse">
+                            <Swords className="w-2.5 h-2.5" />
+                            <span>DUELO</span>
+                          </span>
+                        )}
+                        {!isOvertakingCar && !isWheelToWheelBattle && car.statusTag && (
                           <span className="text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full bg-[#191924] text-[#e6ff55] shrink-0 border border-white/10 font-bold">
                             {car.statusTag}
                           </span>

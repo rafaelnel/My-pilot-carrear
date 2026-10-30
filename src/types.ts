@@ -217,6 +217,13 @@ export interface RaceEvent {
   lap: number;
   description: string;
   type: 'overtake' | 'defense' | 'incident' | 'pit' | 'weather' | 'normal';
+  attackerName?: string;
+  defenderName?: string;
+  attackerTeamId?: string;
+  defenderTeamId?: string;
+  isPlayerInvolved?: boolean;
+  newPosition?: number;
+  intensity?: 'mild' | 'intense' | 'extreme';
 }
 
 export interface ConstructorStanding {
