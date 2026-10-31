@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Settings, Volume2, VolumeX, Monitor, Smartphone, FastForward, ShieldAlert, Bell, Check, X, Save } from 'lucide-react';
 import { GameSettings } from '../types';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -265,6 +266,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   {tempSettings.autosaveNotifications ? 'SIM' : 'NÃO'}
                 </button>
               </div>
+
+              {/* 5. Instalação do Aplicativo no Celular (PWA) */}
+              <PWAInstallButton variant="settings" />
 
             </div>
 

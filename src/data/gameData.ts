@@ -266,9 +266,9 @@ export const TRACKS: Track[] = [
     category: 'kart',
     laps: 20,
     realLaps: 20,
-    weather: 'Chuva',
+    weather: 'Chuva Leve',
     difficulty: 48,
-    characteristics: 'Pista mista e sinuosa sob chuva. Pista escorregadia exige máximo Controle e Consistência.',
+    characteristics: 'Garimpo de aderência sob chuva leve. Exige pneu de Chuva Leve (Intermediário) e bom controle.',
     profileType: 'Misto Equilibrado',
     straightWeight: 0.35,
     cornerWeight: 0.40,
@@ -302,9 +302,9 @@ export const TRACKS: Track[] = [
     category: 'kart',
     laps: 20,
     realLaps: 20,
-    weather: 'Nublado',
+    weather: 'Chuva Pesada',
     difficulty: 55,
-    characteristics: 'Tempo encoberto e temperatura amena. Setores rápidos com forte frenagem.',
+    characteristics: 'Temporal em Le Mans! Exige pneus de Chuva Pesada para drenar a água nos setores de forte frenagem.',
     profileType: 'Travado (Rua)',
     straightWeight: 0.30,
     cornerWeight: 0.35,
@@ -358,9 +358,9 @@ export const TRACKS: Track[] = [
     category: 'f3',
     laps: 24,
     realLaps: 24,
-    weather: 'Nublado',
+    weather: 'Chuva Leve',
     difficulty: 68,
-    characteristics: 'Curvas técnicas (Acque Minerali) e zebras altas sob tempo encoberto.',
+    characteristics: 'Curvas técnicas (Acque Minerali) sob chuva fina. Ideal para pneus de Chuva Leve.',
     profileType: 'Técnico (Muitas Curvas)',
     straightWeight: 0.30,
     cornerWeight: 0.45,
@@ -412,9 +412,9 @@ export const TRACKS: Track[] = [
     category: 'f3',
     laps: 24,
     realLaps: 24,
-    weather: 'Chuva',
+    weather: 'Chuva Pesada',
     difficulty: 74,
-    characteristics: 'Pista encharcada em Maggots e Becketts! Aderência crítica, alto risco de rodadas.',
+    characteristics: 'Pista encharcada em Maggots e Becketts! Exige pneu de Chuva Pesada para evitar aquaplanagem.',
     profileType: 'Técnico (Muitas Curvas)',
     straightWeight: 0.35,
     cornerWeight: 0.45,
@@ -504,9 +504,9 @@ export const TRACKS: Track[] = [
     category: 'f2',
     laps: 29,
     realLaps: 29,
-    weather: 'Chuva',
+    weather: 'Chuva Leve',
     difficulty: 84,
-    characteristics: 'Chuva intensa no asfalto inglês! Aderência reduzida exige consistência perfeita.',
+    characteristics: 'Chuva leve constante no asfalto inglês! Pneu de Chuva Leve (Intermediário) é indispensável.',
     profileType: 'Técnico (Muitas Curvas)',
     straightWeight: 0.34,
     cornerWeight: 0.46,
@@ -522,9 +522,9 @@ export const TRACKS: Track[] = [
     category: 'f2',
     laps: 25,
     realLaps: 25,
-    weather: 'Chuva',
+    weather: 'Chuva Pesada',
     difficulty: 88,
-    characteristics: 'Tempestade na floresta de Ardenas. Eau Rouge molhada com alto perigo de rodada.',
+    characteristics: 'Tempestade pesada na floresta de Ardenas! Eau Rouge exige pneu de Chuva Pesada.',
     profileType: 'Misto Equilibrado',
     straightWeight: 0.45,
     cornerWeight: 0.35,
@@ -668,9 +668,9 @@ export const TRACKS: Track[] = [
     category: 'f1',
     laps: 52,
     realLaps: 52,
-    weather: 'Chuva',
+    weather: 'Chuva Leve',
     difficulty: 88,
-    characteristics: 'Chuva torrencial! Aderência despenca e exige máximo Controle para evitar rodadas.',
+    characteristics: 'Chuva leve britânica! Pista úmida exige composto de Chuva Leve (Intermediário) para manter aderência.',
     profileType: 'Técnico (Muitas Curvas)',
     straightWeight: 0.30,
     cornerWeight: 0.50,
@@ -686,9 +686,9 @@ export const TRACKS: Track[] = [
     category: 'f1',
     laps: 44,
     realLaps: 44,
-    weather: 'Chuva',
+    weather: 'Chuva Pesada',
     difficulty: 90,
-    characteristics: 'Clássica chuva em Spa! Pista ensaboada com alto índice de aquaplanagem.',
+    characteristics: 'Tempestade pesada em Spa! Pista encharcada exige pneu de Chuva Pesada contra aquaplanagem.',
     profileType: 'Misto Equilibrado',
     straightWeight: 0.45,
     cornerWeight: 0.35,
@@ -722,9 +722,9 @@ export const TRACKS: Track[] = [
     category: 'f1',
     laps: 71,
     realLaps: 71,
-    weather: 'Chuva',
+    weather: 'Chuva Pesada',
     difficulty: 92,
-    characteristics: 'Chuva histórica de Interlagos! Baixa aderência transforma a curva do Sol em armadilha.',
+    characteristics: 'Dilúvio histórico em Interlagos! Pneu de Chuva Pesada é obrigatório para sobreviver à Curva do Sol.',
     profileType: 'Técnico (Muitas Curvas)',
     straightWeight: 0.32,
     cornerWeight: 0.45,
@@ -964,32 +964,37 @@ export interface TireDurabilityDetail {
 export const getTireDurabilityDetails = (track: Track): Record<TireCompound, TireDurabilityDetail> => {
   const laps = track.laps;
   const abrasion = track.tireAbrasion;
-  const isWet = track.weather === 'Chuva';
+  const isLightRain = track.weather === 'Chuva Leve';
+  const isHeavyRain = track.weather === 'Chuva Pesada' || track.weather === 'Chuva';
+  const isWet = isLightRain || isHeavyRain;
 
-  // Base durability in laps adjusted by track abrasion
-  // Soft: fast degradation, around 35%-45% of race distance on normal tracks, down to 25% on abrasive tracks
-  const softMax = Math.max(3, Math.round((laps * 0.44) / (abrasion * 1.05)));
-  const softMin = Math.max(2, Math.round(softMax * 0.75));
+  // Base durability in laps adjusted by track abrasion (calibrated for official 1-2 pit stop races)
+  // Soft: around 42%-48% of race distance
+  const softMax = Math.max(4, Math.round((laps * 0.48) / (abrasion * 1.02)));
+  const softMin = Math.max(3, Math.round(softMax * 0.78));
 
-  // Medium: balanced, around 65%-75% of race distance
-  const medMax = Math.max(5, Math.round((laps * 0.72) / abrasion));
-  const medMin = Math.max(4, Math.round(medMax * 0.8));
+  // Medium: balanced, around 65%-75% of race distance (1 pit stop window)
+  const medMax = Math.max(6, Math.round((laps * 0.72) / abrasion));
+  const medMin = Math.max(5, Math.round(medMax * 0.82));
 
-  // Hard: ultra durable, around 110%-130% of race distance (can run whole race without stopping)
-  const hardMax = Math.max(8, Math.round((laps * 1.25) / abrasion));
-  const hardMin = Math.max(6, Math.round(hardMax * 0.82));
+  // Hard: ultra durable, around 90%-115% of race distance
+  const hardMax = Math.max(8, Math.round((laps * 1.08) / abrasion));
+  const hardMin = Math.max(7, Math.round(hardMax * 0.82));
 
-  // Determine optimal compound based on track conditions:
-  // 1. Wet track: Medium is optimal (grooved water evacuation)
-  // 2. High abrasion track (abrasion >= 1.08 or long GP like Sakhir, Silverstone, Interlagos): Hard is optimal!
-  //    Soft tires degrade too fast and cost 2-3s/lap penalty or multiple pits.
-  // 3. Low abrasion track (abrasion <= 0.98 like Monaco, Monza, Canada, Jeddah): Soft is optimal!
-  //    Tires don't wear out fast and Soft's +0.7s/lap pace dominates.
-  // 4. Balanced tracks: Medium is optimal.
+  // Light Rain (Intermediário): optimal in light rain, ~60-72% of race distance in wet, degrades fast in dry
+  const lightRainMax = isWet ? Math.max(6, Math.round((laps * 0.68) / abrasion)) : Math.max(3, Math.round(laps * 0.28));
+  const lightRainMin = Math.max(2, Math.round(lightRainMax * 0.8));
+
+  // Heavy Rain (Wet): optimal in heavy rain, ~65-80% of race distance in heavy rain
+  const heavyRainMax = isHeavyRain ? Math.max(7, Math.round((laps * 0.76) / abrasion)) : isLightRain ? Math.max(5, Math.round(laps * 0.52)) : Math.max(2, Math.round(laps * 0.22));
+  const heavyRainMin = Math.max(2, Math.round(heavyRainMax * 0.8));
+
   let optimalCompound: TireCompound = 'Médio';
-  if (isWet) {
-    optimalCompound = 'Médio';
-  } else if (abrasion >= 1.08 || track.id === 'f1_bahrain' || track.id === 'f1_silverstone' || track.id === 'f1_interlagos' || track.id === 'f3_silverstone' || track.id === 'f2_silverstone') {
+  if (isLightRain) {
+    optimalCompound = 'Chuva Leve';
+  } else if (isHeavyRain) {
+    optimalCompound = 'Chuva Pesada';
+  } else if (abrasion >= 1.08 || track.id === 'f1_bahrain') {
     optimalCompound = 'Duro';
   } else if (abrasion <= 0.98 || track.id === 'f1_monaco' || track.id === 'f1_monza' || track.id === 'f1_canada' || track.id === 'f1_jeddah' || track.id === 'kart_genk') {
     optimalCompound = 'Macio';
@@ -1002,34 +1007,62 @@ export const getTireDurabilityDetails = (track: Track): Record<TireCompound, Tir
       compound: 'Macio',
       minLaps: softMin,
       maxLaps: softMax,
-      paceNote: '+0.5s a +0.8s mais rápido por volta',
-      durabilityNote: `Duração: ${softMin} a ${softMax} voltas (Degradação Rápida)`,
+      paceNote: isWet ? 'Perigoso na chuva (Aquaplanagem)' : '+0.6s mais rápido por volta',
+      durabilityNote: `Duração: ${softMin} a ${softMax} voltas`,
       isOptimal: optimalCompound === 'Macio',
-      idealReason: optimalCompound === 'Macio'
-        ? 'Traçado com baixo desgaste de asfalto! O pneu Macio entrega vantagem brutal de aderência e velocidade sem colapsar a borracha.'
-        : 'Em asfalto abrasivo, o pneu Macio sofrerá superaquecimento após poucas voltas, exigindo 2 pit stops.'
+      idealReason: isWet
+        ? 'Pneu liso (Slick) não drena água! Alto risco de rodada e perda severa de tempo na chuva.'
+        : optimalCompound === 'Macio'
+        ? 'Asfalto de baixo desgaste! O pneu Macio entrega máxima velocidade e aderência.'
+        : 'Alto ganho inicial de velocidade, ideal para stints curtos ou ataque final.'
     },
     Médio: {
       compound: 'Médio',
       minLaps: medMin,
       maxLaps: medMax,
-      paceNote: 'Ritmo padrão equilibrado',
-      durabilityNote: `Duração: ${medMin} a ${medMax} voltas (Janela Ideal para 1 Parada)`,
+      paceNote: isWet ? 'Sem aderência na chuva' : 'Ritmo equilibrado (1 Parada)',
+      durabilityNote: `Duração: ${medMin} a ${medMax} voltas`,
       isOptimal: optimalCompound === 'Médio',
-      idealReason: isWet 
-        ? 'Asfalto molhado! O composto Médio fornece a melhor drenagem e equilíbrio para evitar rodadas.' 
-        : 'Janela de corrida perfeita: permite 1 parada programada com excelente ritmo de volta em curvas.'
+      idealReason: isWet
+        ? 'Pneu de pista seca! Troque para Chuva Leve ou Chuva Pesada para não aquaplanar.'
+        : 'Equilíbrio ideal entre velocidade e desgaste para estratégia oficial de 1 pit stop.'
     },
     Duro: {
       compound: 'Duro',
       minLaps: hardMin,
       maxLaps: hardMax,
-      paceNote: '-0.3s a -0.5s mais lento por volta',
-      durabilityNote: `Duração: ${hardMin} a ${hardMax}+ voltas (Suporta a corrida toda sem parar)`,
+      paceNote: isWet ? 'Escorregadio na chuva' : 'Alta durabilidade e constância',
+      durabilityNote: `Duração: ${hardMin} a ${hardMax} voltas`,
       isOptimal: optimalCompound === 'Duro',
-      idealReason: optimalCompound === 'Duro'
-        ? `Asfalto altamente abrasivo (${abrasion}x)! O pneu Duro é a arma vencedora: mantém consistência por ${hardMin}+ voltas e economiza 20s+ de pit stop!`
-        : 'Pneu muito rígido para pistas de baixa abrasão; demorará para aquecer e renderá menos aderência.'
+      idealReason: isWet
+        ? 'Composto rígido de pista seca; não aquece nem drena água sob chuva.'
+        : `Asfalto abrasivo (${abrasion}x)! Mantém ritmo constante por stints longos.`
+    },
+    'Chuva Leve': {
+      compound: 'Chuva Leve',
+      minLaps: lightRainMin,
+      maxLaps: lightRainMax,
+      paceNote: isLightRain ? '★ Ideal p/ Chuva Leve (+3.5s vs Seco)' : isHeavyRain ? 'Sofre com excesso de água' : 'Superaquece no seco',
+      durabilityNote: `Duração: ${lightRainMin} a ${lightRainMax} voltas`,
+      isOptimal: optimalCompound === 'Chuva Leve',
+      idealReason: isLightRain
+        ? 'Composto Intermediário perfeito para pista úmida e chuva leve! Garante tração e evita rodadas.'
+        : isHeavyRain
+        ? 'Drena parte da água, mas perde para o pneu de Chuva Pesada no temporal.'
+        : 'Borracha macia sulcada que derrete rápido em asfalto seco.'
+    },
+    'Chuva Pesada': {
+      compound: 'Chuva Pesada',
+      minLaps: heavyRainMin,
+      maxLaps: heavyRainMax,
+      paceNote: isHeavyRain ? '★ Ideal p/ Tempestade (+4.5s vs Seco)' : isLightRain ? 'Seguro, porém mais lento que Chuva Leve' : 'Derrete no seco',
+      durabilityNote: `Duração: ${heavyRainMin} a ${heavyRainMax} voltas`,
+      isOptimal: optimalCompound === 'Chuva Pesada',
+      idealReason: isHeavyRain
+        ? 'Sulcos profundos para drenagem máxima! Obrigatório sob Chuva Pesada para evitar aquaplanagem.'
+        : isLightRain
+        ? 'Evita rodadas, mas aquece demais quando há pouca lâmina d\'água.'
+        : 'Inadequado para pista seca: sofre superaquecimento severo.'
     }
   };
 };
@@ -1043,11 +1076,20 @@ export interface TeamTireAdvice {
 
 export const getTeamTireAdvice = (track: Track): TeamTireAdvice => {
   const details = getTireDurabilityDetails(track);
-  if (track.weather === 'Chuva') {
+  if (track.weather === 'Chuva Leve') {
     return {
-      recommendedTire: 'Médio',
-      title: 'Pista Molhada (Chuva)',
-      reason: 'Asfalto molhado e escorregadio! O composto Médio garante o melhor compromisso de aderência e dirigibilidade nas curvas úmidas, reduzindo drasticamente o risco de rodadas.',
+      recommendedTire: 'Chuva Leve',
+      title: 'Pista Úmida · Pneu Chuva Leve Obrigatório',
+      reason: 'Chuva leve constante no circuito! Equipe o pneu de Chuva Leve (Intermediário) para ter aderência nas curvas. Pneus de pista seca sofrerão aquaplanagem severa.',
+      badgeStyle: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+    };
+  }
+
+  if (track.weather === 'Chuva Pesada' || track.weather === 'Chuva') {
+    return {
+      recommendedTire: 'Chuva Pesada',
+      title: 'Tempestade · Pneu Chuva Pesada Obrigatório',
+      reason: 'Muita água acumulada no asfalto! O pneu de Chuva Pesada é indispensável para drenar a pista e evitar rodadas.',
       badgeStyle: 'bg-blue-500/20 text-blue-300 border-blue-500/40'
     };
   }
@@ -1056,7 +1098,7 @@ export const getTeamTireAdvice = (track: Track): TeamTireAdvice => {
     return {
       recommendedTire: 'Duro',
       title: 'Alta Abrasão · Pneu Duro Ideal',
-      reason: `Asfalto extremamente agressivo (${track.tireAbrasion}x) ao longo de ${track.laps} voltas. Pneus Macios colapsam em poucas voltas. O pneu Duro aguenta ${details.Duro.minLaps}-${details.Duro.maxLaps} voltas e permite vencer economizando paradas no box!`,
+      reason: `Asfalto abrasivo (${track.tireAbrasion}x) ao longo de ${track.laps} voltas. O pneu Duro aguenta ${details.Duro.minLaps}-${details.Duro.maxLaps} voltas com excelente consistência!`,
       badgeStyle: 'bg-slate-700/50 text-slate-200 border-slate-500/40'
     };
   }
@@ -1065,7 +1107,7 @@ export const getTeamTireAdvice = (track: Track): TeamTireAdvice => {
     return {
       recommendedTire: 'Macio',
       title: 'Baixa Degradação · Pneu Macio Ideal',
-      reason: `Traçado veloz com asfalto suave (${track.tireAbrasion}x). O pneu Macio suporta até ${details.Macio.maxLaps} voltas com ganho de +0.7s/volta de velocidade pura, sendo a estratégia mais veloz para a vitória!`,
+      reason: `Traçado com asfalto suave (${track.tireAbrasion}x). O pneu Macio suporta até ${details.Macio.maxLaps} voltas com ganho de velocidade pura!`,
       badgeStyle: 'bg-red-500/20 text-red-300 border-red-500/40'
     };
   }
@@ -1073,7 +1115,7 @@ export const getTeamTireAdvice = (track: Track): TeamTireAdvice => {
   return {
     recommendedTire: 'Médio',
     title: 'Estratégia Equilibrada · Pneu Médio',
-    reason: `Configuração mista e equilibrada. O pneu Médio dura ${details.Médio.minLaps} a ${details.Médio.maxLaps} voltas, encaixando perfeitamente na estratégia de 1 parada rápida.`,
+    reason: `Pista seca equilibrada. O pneu Médio dura ${details.Médio.minLaps} a ${details.Médio.maxLaps} voltas, perfeito para estratégia de 1 a 2 paradas.`,
     badgeStyle: 'bg-amber-500/20 text-amber-300 border-amber-500/40'
   };
 };

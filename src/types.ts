@@ -1,6 +1,8 @@
 export type MotorsportCategory = 'kart' | 'f3' | 'f2' | 'f1';
 
-export type TireCompound = 'Macio' | 'Médio' | 'Duro';
+export type TireCompound = 'Macio' | 'Médio' | 'Duro' | 'Chuva Leve' | 'Chuva Pesada';
+
+export type RaceMode = 'rapido' | 'estrategico';
 
 export interface DriverAttributes {
   speed: number;        
@@ -23,7 +25,7 @@ export interface Team {
   attributeBonuses?: Partial<DriverAttributes>;
 }
 
-export type WeatherCondition = 'Seco' | 'Nublado' | 'Chuva';
+export type WeatherCondition = 'Seco' | 'Nublado' | 'Chuva' | 'Chuva Leve' | 'Chuva Pesada';
 
 export interface Track {
   id: string;
@@ -144,6 +146,7 @@ export interface Driver {
     completedCount: number;
   };
   claimedMilestones?: string[]; // IDs das conquistas resgatadas
+  raceMode?: RaceMode; // Modo de corrida selecionado na carreira (Rápido ou Estratégico)
   lastSaved?: string;
 }
 
@@ -211,6 +214,10 @@ export interface LiveRaceCar {
   defenseStat: number;
   carPerf: number;
   statusTag?: string;       // e.g. '⬆️ +1', '🔧 BOX', '🛡️ DEF'
+  dnf?: boolean;
+  dnfReason?: 'Acidente (Derrapagem)' | 'Acidente (Ultrapassagem)' | 'Falha no Motor';
+  willFailEngineLap?: number;
+  aggressiveRainLaps?: number;
 }
 
 export interface RaceEvent {

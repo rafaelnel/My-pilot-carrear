@@ -5,18 +5,28 @@ import {
   ArrowUpRight, RotateCcw, Newspaper, Timer, User, Calendar, BarChart2, 
   PlusCircle, Trash2, Palette, Wrench, Shield, Flame, AlertTriangle, History, FastForward,
   Target, CheckCircle2, CloudRain, Cloud, Sun, Briefcase, Radio, Headphones, DollarSign, Sparkles, Flag, ChevronUp, ChevronDown,
-  Crown, Gift, Lock, Check, Save, LogOut, Settings, Swords, TrendingUp, ShieldAlert
+  Crown, Gift, Lock, Check, Save, LogOut, Settings, Swords, TrendingUp, ShieldAlert, Volume2, VolumeX, HelpCircle
 } from 'lucide-react';
 import { 
   Driver, Track, DriverStanding, ConstructorStanding, RaceEvent, 
   QualifyingResult, MotorsportCategory, LiveRaceCar, RivalDriver, TireCompound, SeasonHistoryEntry,
-  WeatherCondition, SponsorContract, CareerMilestone, SeasonAutosave, GameSettings
+  WeatherCondition, SponsorContract, CareerMilestone, SeasonAutosave, GameSettings, RaceMode
 } from './types';
 import { TEAMS, TRACKS, REAL_F1_DRIVERS, REAL_F2_DRIVERS, REAL_F3_DRIVERS, KART_RIVAL_DRIVERS, SPONSOR_CONTRACTS, CAREER_MILESTONES, getTeamTireAdvice, getTireDurabilityDetails, getInitialSeasonGoals } from './data/gameData';
 import { HelmetVector, CategoryCarVector, TrackMapVector } from './components/MotorsportVectors';
 import { SettingsModal } from './components/SettingsModal';
+import { NewDriverTutorialModal } from './components/NewDriverTutorialModal';
+import { PWAInstallButton } from './components/PWAInstallButton';
+import { startLineAudio } from './utils/startLineAudio';
+import {
+  SLOTS_CACHE_KEY,
+  loadSlotsFromLocalCache,
+  saveSlotsToBrowserCache,
+  recoverSlotsFromBrowserCacheIfNeeded,
+  requestPersistentBrowserCache
+} from './utils/browserCache';
 
-const STORAGE_KEY = 'apex_gp_career_slots_v2';
+const STORAGE_KEY = SLOTS_CACHE_KEY;
 const SETTINGS_STORAGE_KEY = 'apex_gp_game_settings_v1';
 
 const DEFAULT_SETTINGS: GameSettings = {
@@ -40,20 +50,7 @@ const getInitialSettings = (): GameSettings => {
   return DEFAULT_SETTINGS;
 };
 
-const getInitialSlots = (): (Driver | null)[] => {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length === 4) {
-        return parsed;
-      }
-    }
-  } catch (err) {
-    console.error('Falha ao carregar pilotos salvos do localStorage', err);
-  }
-  return [null, null, null, null];
-};
+const getInitialSlots = (): (Driver | null)[] => loadSlotsFromLocalCache();
 
 export default function App() {
   const [slots, setSlots] = useState<(Driver | null)[]>(getInitialSlots);
@@ -64,10 +61,12 @@ export default function App() {
   // Settings State & Modal Handler
   const [gameSettings, setGameSettings] = useState<GameSettings>(getInitialSettings);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isTutorialOpen, setIsTutorialOpen] = useState<boolean>(false);
 
   // Live preview states during creation
   const [newHelmetPrimary, setNewHelmetPrimary] = useState<string>('#e10600');
   const [newHelmetSecondary, setNewHelmetSecondary] = useState<string>('#1e3a8a');
+  const [newDriverRaceMode, setNewDriverRaceMode] = useState<RaceMode>('rapido');
 
   const [gameState, setGameState] = useState<'title' | 'hub' | 'qualifying' | 'race' | 'result' | 'promotion' | 'season_failed'>('title');
   const HUB_TAB_ORDER = ['garagem', 'treino', 'calendario', 'patrocinio', 'classificacao'] as const;
@@ -190,6 +189,16 @@ export default function App() {
 
   // Pre-race & Live Strategy States
   const [startingTire, setStartingTire] = useState<TireCompound>('Médio');
+  const [nextPitTire, setNextPitTire] = useState<TireCompound>('Duro');
+  const [raceMode, setRaceMode] = useState<RaceMode>(() => {
+    try {
+      const saved = localStorage.getItem('apex_gp_race_mode_v1');
+      if (saved === 'estrategico' || saved === 'rapido') return saved;
+    } catch (e) {
+      console.error('Failed to load raceMode', e);
+    }
+    return 'rapido';
+  });
   const [drivingStyle, setDrivingStyle] = useState<'conservador' | 'equilibrado' | 'agressivo'>('equilibrado');
   const [autoPitMode, setAutoPitMode] = useState<'conservador' | 'arriscado'>('conservador');
   const [forcePitNextLap, setForcePitNextLap] = useState<boolean>(false);
@@ -245,9 +254,31 @@ export default function App() {
     return found?.color || '#38bdf8';
   };
 
+  const toggleQuickSound = () => {
+    setGameSettings((prev) => {
+      const nextEnabled = !prev.soundEnabled;
+      const updated = { ...prev, soundEnabled: nextEnabled };
+      if (!nextEnabled) {
+        startLineAudio.stopAll();
+      } else if (startLineStage === 'grid_intro') {
+        startLineAudio.startGridIdle(updated.soundVolume, driver?.category || 'f1');
+      }
+      try {
+        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(updated));
+      } catch (e) {
+        console.error('Failed to save sound toggle', e);
+      }
+      return updated;
+    });
+  };
+
   const startLightsCountdown = (initialCars: LiveRaceCar[], track: Track) => {
     setStartLineStage('lights_count');
     setRedLightsCount(1);
+
+    if (gameSettings.soundEnabled) {
+      startLineAudio.playRedLightStep(1, gameSettings.soundVolume, driver?.category || 'f1');
+    }
 
     if (lightsTimerRef.current) {
       clearInterval(lightsTimerRef.current);
@@ -259,6 +290,9 @@ export default function App() {
       count += 1;
       if (count <= 5) {
         setRedLightsCount(count);
+        if (gameSettings.soundEnabled) {
+          startLineAudio.playRedLightStep(count, gameSettings.soundVolume, driver?.category || 'f1');
+        }
       } else {
         clearInterval(interval);
         const randomHold = 550 + Math.random() * 500;
@@ -266,7 +300,12 @@ export default function App() {
           setRedLightsCount(0);
           setStartLineStage('lights_out');
 
+          if (gameSettings.soundEnabled) {
+            startLineAudio.playLightsOutAcceleration(gameSettings.soundVolume, driver?.category || 'f1');
+          }
+
           lightsTimerRef.current = setTimeout(() => {
+            startLineAudio.stopAll();
             setStartLineStage('none');
             runLiveRaceSimulation(initialCars, track);
           }, 1650);
@@ -282,6 +321,7 @@ export default function App() {
       clearInterval(lightsTimerRef.current);
       clearTimeout(lightsTimerRef.current);
     }
+    startLineAudio.stopAll();
     setStartLineStage('none');
     setRedLightsCount(0);
     runLiveRaceSimulation(initialCars, track);
@@ -292,6 +332,8 @@ export default function App() {
   const forcePitRef = useRef<boolean>(false);
   const drivingStyleRef = useRef<'conservador' | 'equilibrado' | 'agressivo'>('equilibrado');
   const simSpeedRef = useRef<1 | 2>(1);
+  const nextPitTireRef = useRef<TireCompound>('Duro');
+  const raceModeRef = useRef<RaceMode>(raceMode);
   const raceIntervalRef = useRef<any>(null);
 
   useEffect(() => {
@@ -305,6 +347,72 @@ export default function App() {
   useEffect(() => {
     simSpeedRef.current = simSpeed;
   }, [simSpeed]);
+
+  useEffect(() => {
+    nextPitTireRef.current = nextPitTire;
+  }, [nextPitTire]);
+
+  useEffect(() => {
+    raceModeRef.current = raceMode;
+    try {
+      localStorage.setItem('apex_gp_race_mode_v1', raceMode);
+    } catch (e) {
+      console.error('Failed to save raceMode', e);
+    }
+  }, [raceMode]);
+
+  const handleSelectStartingTire = (compound: TireCompound) => {
+    setStartingTire(compound);
+    // Also set a smart default for the next pit stop tire
+    if (compound === 'Chuva Leve' || compound === 'Chuva Pesada') {
+      setNextPitTire(compound);
+      nextPitTireRef.current = compound;
+    } else if (compound === 'Macio') {
+      setNextPitTire('Médio');
+      nextPitTireRef.current = 'Médio';
+    } else if (compound === 'Médio') {
+      setNextPitTire('Duro');
+      nextPitTireRef.current = 'Duro';
+    } else {
+      setNextPitTire('Médio');
+      nextPitTireRef.current = 'Médio';
+    }
+  };
+
+  const handleSelectNextPitTire = (compound: TireCompound) => {
+    setNextPitTire(compound);
+    nextPitTireRef.current = compound;
+  };
+
+  const handleToggleRaceMode = (mode?: RaceMode) => {
+    if (gameState === 'race' || isRacing || startLineStage !== 'none') {
+      triggerSaveToast('🔒 O modo de corrida não pode ser alterado durante a corrida! Altere no Paddock após a bandeirada.', 'autosave');
+      return;
+    }
+    setRaceMode(prev => {
+      const next = mode ?? (prev === 'rapido' ? 'estrategico' : 'rapido');
+      raceModeRef.current = next;
+      if (selectedSlotIndex !== null) {
+        setSlots(prevSlots => {
+          const copy = [...prevSlots];
+          if (copy[selectedSlotIndex]) {
+            copy[selectedSlotIndex] = {
+              ...copy[selectedSlotIndex]!,
+              raceMode: next,
+              lastSaved: new Date().toISOString()
+            };
+          }
+          return copy;
+        });
+      }
+      if (next === 'estrategico') {
+        triggerSaveToast('🧠 MODO ESTRATÉGICO: Corridas de 1 a 2 min e paradas oficiais (1-2 pits)!', 'autosave');
+      } else {
+        triggerSaveToast('⚡ MODO RÁPIDO: Simulação acelerada ativada!', 'autosave');
+      }
+      return next;
+    });
+  };
 
   const [driverStandings, setDriverStandings] = useState<DriverStanding[]>([]);
   const [constructorStandings, setConstructorStandings] = useState<ConstructorStanding[]>([]);
@@ -326,6 +434,29 @@ export default function App() {
       initCategoryStandings(driver.category, driver);
     }
   }, [driver?.category, selectedSlotIndex]);
+
+  // Auto-set recommended starting tire and next pit tire when track changes
+  useEffect(() => {
+    if (!driver) return;
+    const catTrks = TRACKS.filter(t => t.category === driver.category);
+    const trk = catTrks[currentRaceIndex] || catTrks[0];
+    if (!trk) return;
+    if (trk.weather === 'Chuva Leve') {
+      setStartingTire('Chuva Leve');
+      setNextPitTire('Chuva Leve');
+      nextPitTireRef.current = 'Chuva Leve';
+    } else if (trk.weather === 'Chuva Pesada' || trk.weather === 'Chuva') {
+      setStartingTire('Chuva Pesada');
+      setNextPitTire('Chuva Pesada');
+      nextPitTireRef.current = 'Chuva Pesada';
+    } else {
+      const advice = getTeamTireAdvice(trk);
+      setStartingTire(advice.recommendedTire);
+      const nextDefault: TireCompound = advice.recommendedTire === 'Duro' ? 'Médio' : 'Duro';
+      setNextPitTire(nextDefault);
+      nextPitTireRef.current = nextDefault;
+    }
+  }, [currentRaceIndex, driver?.category, selectedSlotIndex]);
 
   const initCategoryStandings = (cat: MotorsportCategory, currentDriver: Driver) => {
     const catTeams = TEAMS.filter(t => t.category === cat);
@@ -358,13 +489,66 @@ export default function App() {
     setConstructorStandings(cStandings);
   };
 
-  // Persist all driver slots automatically into localStorage
+  // Request persistent browser cache and recover from CacheStorage / IndexedDB if localStorage was cleared
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(slots));
-    } catch (err) {
-      console.error('Falha ao salvar slots no localStorage', err);
-    }
+    void requestPersistentBrowserCache();
+    let mounted = true;
+    recoverSlotsFromBrowserCacheIfNeeded(slots).then(recovered => {
+      if (mounted && recovered) {
+        setSlots(recovered);
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Persist all driver slots automatically into Browser Cache (localStorage + CacheStorage + IndexedDB)
+  useEffect(() => {
+    saveSlotsToBrowserCache(slots);
+  }, [slots]);
+
+  // Automatically keep the active slot synchronized in cache whenever season, race index, XP, or standings change
+  useEffect(() => {
+    if (selectedSlotIndex === null) return;
+    setSlots(prevSlots => {
+      const current = prevSlots[selectedSlotIndex];
+      if (!current) return prevSlots;
+      const sameSeason = current.currentSeason === currentSeason;
+      const sameRace = current.currentRaceIndex === currentRaceIndex;
+      const sameXp = current.trainingPoints === trainingPoints;
+      const sameDriverStandings = current.savedDriverStandings === driverStandings;
+      const sameConstructorStandings = current.savedConstructorStandings === constructorStandings;
+
+      if (sameSeason && sameRace && sameXp && sameDriverStandings && sameConstructorStandings) {
+        return prevSlots;
+      }
+
+      const copy = [...prevSlots];
+      copy[selectedSlotIndex] = {
+        ...current,
+        currentSeason,
+        currentRaceIndex,
+        trainingPoints,
+        savedDriverStandings: driverStandings,
+        savedConstructorStandings: constructorStandings,
+        lastSaved: new Date().toISOString()
+      };
+      return copy;
+    });
+  }, [selectedSlotIndex, currentSeason, currentRaceIndex, trainingPoints, driverStandings, constructorStandings]);
+
+  // Flush browser cache when tab is hidden or closed
+  useEffect(() => {
+    const flushCache = () => {
+      saveSlotsToBrowserCache(slots);
+    };
+    window.addEventListener('beforeunload', flushCache);
+    document.addEventListener('visibilitychange', flushCache);
+    return () => {
+      window.removeEventListener('beforeunload', flushCache);
+      document.removeEventListener('visibilitychange', flushCache);
+    };
   }, [slots]);
 
   const selectDriverSlot = (index: number) => {
@@ -377,6 +561,10 @@ export default function App() {
       chosen.sponsorshipEarnings = { money: 0, xp: 0, completedCount: 0 };
     }
     setSelectedSlotIndex(index);
+    if (chosen.raceMode === 'rapido' || chosen.raceMode === 'estrategico') {
+      setRaceMode(chosen.raceMode);
+      raceModeRef.current = chosen.raceMode;
+    }
     if (chosen.currentSeason) setCurrentSeason(chosen.currentSeason);
     if (typeof chosen.currentRaceIndex === 'number') setCurrentRaceIndex(chosen.currentRaceIndex);
     if (typeof chosen.trainingPoints === 'number') setTrainingPoints(chosen.trainingPoints);
@@ -452,6 +640,7 @@ export default function App() {
             currentSeason,
             currentRaceIndex,
             trainingPoints,
+            raceMode,
             savedDriverStandings: driverStandings,
             savedConstructorStandings: constructorStandings,
             lastSaved: new Date().toISOString()
@@ -516,8 +705,12 @@ export default function App() {
       seasonGoals: getInitialSeasonGoals(),
       activeSponsors: getInitialSeasonGoals(),
       sponsorshipEarnings: { money: 0, xp: 0, completedCount: 0 },
+      raceMode: newDriverRaceMode,
       lastSaved: new Date().toISOString()
     };
+
+    setRaceMode(newDriverRaceMode);
+    raceModeRef.current = newDriverRaceMode;
 
     const newSlots = [...slots];
     newSlots[creatingSlotId] = newDriver;
@@ -529,6 +722,7 @@ export default function App() {
     setTrainingPoints(5);
     initCategoryStandings('kart', newDriver);
     setGameState('hub');
+    setIsTutorialOpen(true);
     triggerSaveToast('⚡ Autosave: Início da Temporada 2026 (Kart) salvo automaticamente!', 'autosave');
     fetchAiNews(`O piloto ${name} (${nationality}) inicia sua carreira nas pistas de Kart pela ${startingTeam.name}.`);
   };
@@ -545,8 +739,9 @@ export default function App() {
           currentSeason: updated.currentSeason ?? currentSeason,
           currentRaceIndex: updated.currentRaceIndex ?? currentRaceIndex,
           trainingPoints: updated.trainingPoints ?? trainingPoints,
-          savedDriverStandings: driverStandings,
-          savedConstructorStandings: constructorStandings,
+          raceMode: updated.raceMode ?? copy[selectedSlotIndex]?.raceMode ?? raceMode,
+          savedDriverStandings: updated.savedDriverStandings ?? driverStandings,
+          savedConstructorStandings: updated.savedConstructorStandings ?? constructorStandings,
           seasonGoals: goals,
           activeSponsors: goals,
           sponsorshipEarnings: updated.sponsorshipEarnings ?? copy[selectedSlotIndex]?.sponsorshipEarnings ?? { money: 0, xp: 0, completedCount: 0 },
@@ -780,8 +975,10 @@ export default function App() {
 
     setTimeout(() => {
       const baseSeconds = driver.category === 'kart' ? 52.0 : driver.category === 'f3' ? 76.0 : driver.category === 'f2' ? 88.0 : 79.0;
-      const isWet = track.weather === 'Chuva';
-      const weatherBaseDelta = isWet ? 4.2 : track.weather === 'Nublado' ? 0.35 : 0;
+      const isLightRain = track.weather === 'Chuva Leve';
+      const isHeavyRain = track.weather === 'Chuva Pesada' || track.weather === 'Chuva';
+      const isWet = isLightRain || isHeavyRain;
+      const weatherBaseDelta = isHeavyRain ? 5.2 : isLightRain ? 3.4 : track.weather === 'Nublado' ? 0.35 : 0;
       const effStraightW = isWet ? track.straightWeight * 0.45 : track.straightWeight;
       const effCornerW = isWet ? track.cornerWeight * 1.6 : track.cornerWeight;
 
@@ -875,14 +1072,26 @@ export default function App() {
     const catTracks = TRACKS.filter(t => t.category === driver.category);
     const track = catTracks[currentRaceIndex] || catTracks[0];
 
+    const isLightRain = track.weather === 'Chuva Leve';
+    const isHeavyRain = track.weather === 'Chuva Pesada' || track.weather === 'Chuva';
     const details = getTireDurabilityDetails(track);
-    const optimalCompound: TireCompound = details.Duro.isOptimal ? 'Duro' : details.Macio.isOptimal ? 'Macio' : 'Médio';
-    const aiCompounds: TireCompound[] = [optimalCompound, optimalCompound, 'Médio', optimalCompound === 'Duro' ? 'Médio' : 'Macio'];
+    const optimalDryCompound: TireCompound = details.Duro.isOptimal ? 'Duro' : details.Macio.isOptimal ? 'Macio' : 'Médio';
+    const aiCompounds: TireCompound[] = isLightRain
+      ? ['Chuva Leve', 'Chuva Leve', 'Chuva Leve', 'Chuva Pesada']
+      : isHeavyRain
+      ? ['Chuva Pesada', 'Chuva Pesada', 'Chuva Pesada', 'Chuva Leve']
+      : [optimalDryCompound, optimalDryCompound, 'Médio', optimalDryCompound === 'Duro' ? 'Médio' : 'Macio'];
 
     const initialCars: LiveRaceCar[] = qResults.map((q, idx) => {
       const stats = getDriverCombatStats(q.driverName, q.teamId);
       const startGap = idx * 0.42;
       const aiTire = aiCompounds[(idx + Math.floor(Math.random() * 2)) % aiCompounds.length];
+      // Todo carro quando entra em uma corrida tem 1% de chance de dar falha no motor
+      const hasEngineFailure = Math.random() < 0.01;
+      const failLap = hasEngineFailure
+        ? Math.max(2, Math.min(track.laps, Math.floor(Math.random() * Math.max(1, track.laps - 1)) + 2))
+        : undefined;
+
       return {
         driverName: q.driverName,
         teamId: q.teamId,
@@ -904,13 +1113,20 @@ export default function App() {
         cornerStat: stats.cornerStat,
         defenseStat: stats.defenseStat,
         carPerf: stats.carPerf,
-        statusTag: undefined
+        statusTag: undefined,
+        dnf: false,
+        dnfReason: undefined,
+        willFailEngineLap: failLap,
+        aggressiveRainLaps: 0
       };
     });
 
     setRacePositions(initialCars);
     setStartLineStage('grid_intro');
     setRedLightsCount(0);
+    if (gameSettings.soundEnabled) {
+      startLineAudio.startGridIdle(gameSettings.soundVolume, driver.category);
+    }
   };
 
   const runLiveRaceSimulation = (initialGrid: LiveRaceCar[], track: Track) => {
@@ -931,34 +1147,82 @@ export default function App() {
         setCurrentLap(lap);
         const lapEvents: RaceEvent[] = [];
         const remainingLaps = totalLaps - lap;
+        const isStrategicMode = raceModeRef.current === 'estrategico';
+        const isLightRain = track.weather === 'Chuva Leve';
+        const isHeavyRain = track.weather === 'Chuva Pesada' || track.weather === 'Chuva';
+        const isRain = isLightRain || isHeavyRain;
+        const isCloudy = track.weather === 'Nublado';
 
-        // 1. Update each car's tire wear, automatic pit stop execution, and raw lap pace
+        // 1. Update each car's engine reliability, tire wear, pit stops, wrong-tire delays, skids, and lap pace
         cars.forEach(car => {
           car.prevPos = car.pos;
           car.inPit = false;
-          car.statusTag = undefined;
 
-          const isPlayer = car.isPlayer;
-          const style = isPlayer ? drivingStyleRef.current : 'equilibrado';
-          const wearStyleMult = style === 'agressivo' ? 1.24 : style === 'conservador' ? 0.82 : 1.0;
-          
-          let compoundWearMult =
-            car.tireCompound === 'Macio' ? 1.52 :
-            car.tireCompound === 'Médio' ? 1.18 : 0.68;
-
-          // Track-dependent abrasion impact on tires:
-          // Abrasive tracks rapidly degrade Soft rubber, making Hard tires the dominant winning compound!
-          // Smooth low-abrasion tracks preserve Soft rubber and reward its massive grip!
-          if (track.tireAbrasion >= 1.08) {
-            if (car.tireCompound === 'Macio') compoundWearMult *= 1.48;
-            if (car.tireCompound === 'Duro') compoundWearMult *= 0.84;
-          } else if (track.tireAbrasion <= 0.98) {
-            if (car.tireCompound === 'Macio') compoundWearMult *= 0.72;
-            if (car.tireCompound === 'Duro') compoundWearMult *= 1.15;
+          // If car already retired (DNF), keep its DNF state and skip lap calculation
+          if (car.dnf) {
+            car.lastLapTime = 'ABANDONO';
+            car.statusTag = car.dnfReason === 'Falha no Motor' ? '🔥 MOTOR (DNF)' : '💥 ACIDENTE (DNF)';
+            return;
           }
 
-          // Automatic Pit Stop Trigger when tire health drops below 27% (and at least 2 laps left)
-          const needsAutoPit = car.tireHealth <= 27 && remainingLaps >= 2;
+          car.statusTag = undefined;
+
+          // MODO ESTRATÉGICO: 1% de chance por carro na corrida de sofrer Falha no Motor
+          if (isStrategicMode && car.willFailEngineLap && lap === car.willFailEngineLap) {
+            car.dnf = true;
+            car.dnfReason = 'Falha no Motor';
+            car.statusTag = '🔥 MOTOR (DNF)';
+            car.lastLapTime = 'ABANDONO';
+            car.cumulativeTime = 900000 - lap * 100 + car.pos;
+            lapEvents.push({
+              lap,
+              description: `🔥 FALHA NO MOTOR (1%)! O motor de ${car.driverName} estourou em plena volta ${lap} — abandono imediato!`,
+              type: 'incident',
+              isPlayerInvolved: car.isPlayer,
+              intensity: 'extreme'
+            });
+            return;
+          }
+
+          const isPlayer = car.isPlayer;
+          // In rain, AI occasionally pushes aggressively as well
+          const style = isPlayer ? drivingStyleRef.current : 'equilibrado';
+          const wearStyleMult = style === 'agressivo' ? 1.18 : style === 'conservador' ? 0.84 : 1.0;
+
+          // Track consecutive laps driving in Aggressive Mode in the rain
+          if (isRain && style === 'agressivo') {
+            car.aggressiveRainLaps = (car.aggressiveRainLaps || 0) + 1;
+          } else {
+            car.aggressiveRainLaps = Math.max(0, (car.aggressiveRainLaps || 0) - 1);
+          }
+
+          // Calibrated wear so a full race has 1 to 2 pit stops like an official GP!
+          let compoundWearMult = 1.0;
+          if (car.tireCompound === 'Macio') {
+            compoundWearMult = isStrategicMode ? 1.22 : 1.32;
+          } else if (car.tireCompound === 'Médio') {
+            compoundWearMult = isStrategicMode ? 0.94 : 1.02;
+          } else if (car.tireCompound === 'Duro') {
+            compoundWearMult = isStrategicMode ? 0.72 : 0.74;
+          } else if (car.tireCompound === 'Chuva Leve') {
+            compoundWearMult = isLightRain ? 0.92 : isHeavyRain ? 1.12 : 1.75; // Overheats on dry track
+          } else if (car.tireCompound === 'Chuva Pesada') {
+            compoundWearMult = isHeavyRain ? 0.88 : isLightRain ? 1.18 : 1.95; // Melts on dry track
+          }
+
+          // Track-dependent abrasion impact on dry tires
+          if (!isRain) {
+            if (track.tireAbrasion >= 1.08) {
+              if (car.tireCompound === 'Macio') compoundWearMult *= 1.16;
+              if (car.tireCompound === 'Duro') compoundWearMult *= 0.88;
+            } else if (track.tireAbrasion <= 0.98) {
+              if (car.tireCompound === 'Macio') compoundWearMult *= 0.86;
+              if (car.tireCompound === 'Duro') compoundWearMult *= 1.08;
+            }
+          }
+
+          // Automatic Pit Stop Trigger when tire health drops below 25% (and at least 2 laps left)
+          const needsAutoPit = car.tireHealth <= 25 && remainingLaps >= 2;
           const playerForcedPit = isPlayer && forcePitRef.current && remainingLaps >= 1;
 
           let pitPenaltySeconds = 0;
@@ -968,21 +1232,20 @@ export default function App() {
             setForcePitNextLap(false);
             car.pitStops += 1;
             car.inPit = true;
+            car.aggressiveRainLaps = 0;
 
-            // Choose next compound based on remaining laps & pit mode
-            const nextCompound: TireCompound =
-              remainingLaps <= totalLaps * 0.38
-                ? (autoPitModeRef.current === 'arriscado' ? 'Macio' : 'Médio')
-                : (autoPitModeRef.current === 'arriscado' ? 'Médio' : 'Duro');
+            // Player equips the exact tire compound selected in the live Pit Wall (nextPitTireRef.current)
+            const nextCompound: TireCompound = nextPitTireRef.current;
+            const shortCode = getTireShortCode(nextCompound);
 
             if (autoPitModeRef.current === 'conservador') {
               pitPenaltySeconds = 3.0;
               car.tireHealth = 100;
               car.tireCompound = nextCompound;
-              car.statusTag = `🔧 BOX ${nextCompound[0]} (3.0s)`;
+              car.statusTag = `🔧 BOX ${shortCode} (3.0s)`;
               lapEvents.push({
                 lap,
-                description: `🔧 Pit Stop Automático Seguro (3.0s): ${car.driverName} colocou pneus ${nextCompound} novos!`,
+                description: `🔧 Pit Stop Seguro (3.0s): ${car.driverName} colocou pneus ${nextCompound} novos!`,
                 type: 'pit'
               });
             } else {
@@ -991,10 +1254,10 @@ export default function App() {
                 pitPenaltySeconds = 1.8;
                 car.tireHealth = 100;
                 car.tireCompound = nextCompound;
-                car.statusTag = `⚡ BOX ${nextCompound[0]} (1.8s)`;
+                car.statusTag = `⚡ BOX ${shortCode} (1.8s)`;
                 lapEvents.push({
                   lap,
-                  description: `⚡ Box Automático Relâmpago (1.8s)! ${car.driverName} voltou de pneus ${nextCompound}!`,
+                  description: `⚡ Box Relâmpago (1.8s)! ${car.driverName} voltou de pneus ${nextCompound}!`,
                   type: 'pit'
                 });
               } else {
@@ -1014,25 +1277,27 @@ export default function App() {
             car.inPit = true;
             pitPenaltySeconds = Number((2.3 + Math.random() * 1.1).toFixed(1));
             car.tireHealth = 100;
-            car.tireCompound = remainingLaps <= totalLaps * 0.38 ? 'Macio' : 'Médio';
+            if (isLightRain) {
+              car.tireCompound = 'Chuva Leve';
+            } else if (isHeavyRain) {
+              car.tireCompound = 'Chuva Pesada';
+            } else {
+              car.tireCompound = remainingLaps <= totalLaps * 0.36 ? 'Macio' : (car.tireCompound === 'Macio' ? 'Duro' : 'Médio');
+            }
             car.statusTag = `🔧 BOX (${pitPenaltySeconds}s)`;
             if (car.pos <= 5) {
               lapEvents.push({
                 lap,
-                description: `🔧 ${car.driverName} (P${car.pos}) fez parada automática para pneus ${car.tireCompound} (${pitPenaltySeconds}s).`,
+                description: `🔧 ${car.driverName} (P${car.pos}) fez parada no box para pneus ${car.tireCompound} (${pitPenaltySeconds}s).`,
                 type: 'pit'
               });
             }
           } else {
             // Normal tire wear on track
-            const jitter = 0.92 + Math.random() * 0.16;
+            const jitter = 0.93 + Math.random() * 0.14;
             const wearAmount = baseWearUnit * track.tireAbrasion * wearStyleMult * compoundWearMult * jitter;
             car.tireHealth = Math.max(5, Math.round(car.tireHealth - wearAmount));
           }
-
-          // Calculate track-specific performance for this lap
-          const isRain = track.weather === 'Chuva';
-          const isCloudy = track.weather === 'Nublado';
 
           // In rain, straight speeds contribute less while cornering & consistency (car.cornerStat) dominate
           const straightWeight = isRain ? track.straightWeight * 0.65 : track.straightWeight;
@@ -1045,70 +1310,181 @@ export default function App() {
             car.carPerf * 0.35;
 
           const styleBonus = style === 'agressivo' ? 2.2 : style === 'conservador' ? -1.5 : 0;
-          
-          // Tire compound speed difference by circuit profile:
-          let compoundSpeedBonus =
-            car.tireCompound === 'Macio' ? 3.2 :
-            car.tireCompound === 'Médio' ? 1.5 : 0.0;
 
-          if (track.tireAbrasion <= 0.98) {
-            // Low abrasion / smooth asphalt: Soft tires dominate with +0.8s/lap pace
-            if (car.tireCompound === 'Macio') compoundSpeedBonus = 4.3;
-            if (car.tireCompound === 'Duro') compoundSpeedBonus = -1.2;
-          } else if (track.tireAbrasion >= 1.08) {
-            // High abrasion: Soft overheats, Hard stays in optimal thermo-window
-            if (car.tireCompound === 'Macio') compoundSpeedBonus = 1.6;
-            if (car.tireCompound === 'Duro') compoundSpeedBonus = 1.4;
-          }
+          // Tire compound speed & wet weather matching physics
+          let compoundSpeedBonus = 0;
+          const isDryCompound = car.tireCompound === 'Macio' || car.tireCompound === 'Médio' || car.tireCompound === 'Duro';
+          const isWetCompound = car.tireCompound === 'Chuva Leve' || car.tireCompound === 'Chuva Pesada';
+          const isSlickInRain = isRain && isDryCompound;
+          const isWetInDry = !isRain && isWetCompound;
+          const isMismatchedWet =
+            (isLightRain && car.tireCompound === 'Chuva Pesada') ||
+            (isHeavyRain && car.tireCompound === 'Chuva Leve');
 
-          if (isRain) {
-            if (car.tireCompound === 'Médio') {
-              compoundSpeedBonus += 2.6; // Inter/Wet groove advantage
+          // Wrong tire time delay (retardo no tempo por pneu errado no Modo Estratégico)
+          let wrongTireDelay = 0;
+
+          if (isLightRain) {
+            if (car.tireCompound === 'Chuva Leve') {
+              compoundSpeedBonus = 4.2;
+            } else if (car.tireCompound === 'Chuva Pesada') {
+              compoundSpeedBonus = 1.2;
+              if (isStrategicMode) wrongTireDelay = 1.8;
             } else {
-              compoundSpeedBonus -= 2.2; // Slicks struggle in wet conditions
+              compoundSpeedBonus = -5.5;
+              if (isStrategicMode) wrongTireDelay = 4.4;
+            }
+          } else if (isHeavyRain) {
+            if (car.tireCompound === 'Chuva Pesada') {
+              compoundSpeedBonus = 4.8;
+            } else if (car.tireCompound === 'Chuva Leve') {
+              compoundSpeedBonus = 0.6;
+              if (isStrategicMode) wrongTireDelay = 2.4;
+            } else {
+              compoundSpeedBonus = -8.5;
+              if (isStrategicMode) wrongTireDelay = 6.8;
+            }
+          } else {
+            // Dry / Cloudy track
+            if (car.tireCompound === 'Macio') {
+              compoundSpeedBonus = track.tireAbrasion <= 0.98 ? 4.3 : track.tireAbrasion >= 1.08 ? 1.8 : 3.2;
+            } else if (car.tireCompound === 'Médio') {
+              compoundSpeedBonus = 1.6;
+            } else if (car.tireCompound === 'Duro') {
+              compoundSpeedBonus = track.tireAbrasion >= 1.08 ? 1.5 : track.tireAbrasion <= 0.98 ? -1.0 : 0.2;
+            } else {
+              // Using rain tires on dry asphalt: slow and overheats
+              compoundSpeedBonus = -4.2;
+              if (isStrategicMode) wrongTireDelay = 3.8;
             }
           }
 
-          const wearCritMult = track.tireAbrasion >= 1.08 ? 0.22 : 0.12;
+          if (isStrategicMode && (isSlickInRain || isWetInDry) && !car.inPit) {
+            car.statusTag = '⚠️ PNEU ERRADO';
+          }
+
+          const wearCritMult = track.tireAbrasion >= 1.08 ? 0.20 : 0.12;
           const tireWearPenalty = car.tireHealth < 40 ? (40 - car.tireHealth) * wearCritMult : (100 - car.tireHealth) * 0.015;
 
-          // Rain and weather grip impact:
-          // Rain drastically lowers grip (+4.0s baseline penalty)
-          // High consistency/control offsets rain penalty:
           const wetControlBonus = isRain ? ((car.cornerStat - 60) * 0.09) : 0;
-          const weatherGripLoss = isRain ? 4.2 : isCloudy ? 0.4 : 0;
+          const weatherGripLoss = isHeavyRain ? 5.0 : isLightRain ? 3.2 : isCloudy ? 0.4 : 0;
 
-          // Rain Spin Check (Rodadas na Chuva):
-          // Lower consistency + aggressive style = severe risk of spinning out
+          // Skidding (Derrapagem) & Skid-Induced Accidents:
+          // - In Strategic Mode: wrong tires (dry in rain, rain in dry, mismatched rain) and prolonged Aggressive Mode in rain cause skids (derrapagem), and a skid can cause an accident (DNF)!
           let spinPenalty = 0;
-          if (isRain && !car.inPit) {
-            // Spin chance per lap based on driver's consistency / cornerStat
-            // Range: 80+ consistency has ~2% chance, 50 consistency has ~14% chance
-            let spinChance = Math.max(0.015, (85 - car.cornerStat) * 0.0035);
-            if (style === 'agressivo') spinChance *= 1.6;
-            if (style === 'conservador') spinChance *= 0.45;
-            if (car.tireHealth < 35) spinChance *= 1.4;
+          if (!car.inPit) {
+            if (isStrategicMode) {
+              let skidChance = 0;
 
-            if (Math.random() < spinChance) {
-              spinPenalty = Number((3.8 + Math.random() * 2.8).toFixed(1));
-              car.statusTag = '🌀 RODOU!';
-              if (car.isPlayer) {
-                lapEvents.push({
-                  lap,
-                  description: `🌀 RODADA NA CHUVA! ${car.driverName} perdeu o controle na pista molhada e perdeu ${spinPenalty}s!`,
-                  type: 'incident'
-                });
-              } else if (car.pos <= 6) {
-                lapEvents.push({
-                  lap,
-                  description: `🌀 ${car.driverName} (P${car.pos}) rodou no asfalto molhado e perdeu tempo!`,
-                  type: 'incident'
-                });
+              if (isRain) {
+                skidChance += Math.max(0.01, (85 - car.cornerStat) * 0.002);
+              }
+
+              // Wrong tire compound skid risk
+              if (isSlickInRain) {
+                skidChance += isHeavyRain ? 0.36 : 0.25;
+              } else if (isWetInDry) {
+                skidChance += 0.14;
+              } else if (isMismatchedWet) {
+                skidChance += isHeavyRain ? 0.14 : 0.07;
+              }
+
+              // Andar muito no modo agressivo na chuva pode causar derrapagem
+              if (isRain && style === 'agressivo') {
+                const aggLaps = car.aggressiveRainLaps || 1;
+                skidChance += aggLaps === 1 ? 0.06 : aggLaps === 2 ? 0.18 : 0.32;
+              } else if (style === 'conservador') {
+                skidChance *= 0.55;
+              }
+
+              if (car.tireHealth < 35) {
+                skidChance += 0.05;
+              }
+
+              if (skidChance > 0 && Math.random() < skidChance) {
+                // A skid (derrapagem) occurred! Check if the skid causes an Accident (uma derrapagem pode causar acidente)
+                const accidentFromSkidChance = isSlickInRain
+                  ? (isHeavyRain ? 0.35 : 0.26)
+                  : (isWetInDry || isMismatchedWet)
+                  ? 0.22
+                  : 0.20;
+
+                const causeText = isSlickInRain
+                  ? `pneu seco (${car.tireCompound}) na chuva`
+                  : isWetInDry
+                  ? `pneu de chuva (${car.tireCompound}) no seco`
+                  : isRain && (car.aggressiveRainLaps || 0) >= 2
+                  ? `muito tempo no modo agressivo na chuva`
+                  : isMismatchedWet
+                  ? `pneu ${car.tireCompound} inadequado`
+                  : `pista escorregadia`;
+
+                if (Math.random() < accidentFromSkidChance) {
+                  // Skid leads to a Race Accident (DNF)
+                  car.dnf = true;
+                  car.dnfReason = 'Acidente (Derrapagem)';
+                  car.statusTag = '💥 ACIDENTE (DNF)';
+                  car.lastLapTime = 'ABANDONO';
+                  car.cumulativeTime = 900000 - lap * 100 + car.pos;
+                  lapEvents.push({
+                    lap,
+                    description: `💥 ACIDENTE APÓS DERRAPAGEM! ${car.driverName} derrapou (${causeText}) e bateu na barreira — abandono!`,
+                    type: 'incident',
+                    isPlayerInvolved: car.isPlayer,
+                    intensity: 'extreme'
+                  });
+                  return;
+                } else {
+                  // Skid causes heavy time delay (Derrapagem)
+                  spinPenalty = Number((4.0 + Math.random() * 3.2).toFixed(1));
+                  car.statusTag = '🌀 DERRAPOU!';
+                  if (car.isPlayer || car.pos <= 8) {
+                    lapEvents.push({
+                      lap,
+                      description: `🌀 DERRAPAGEM! ${car.driverName} derrapou (${causeText}) e perdeu +${spinPenalty}s!`,
+                      type: 'incident',
+                      isPlayerInvolved: car.isPlayer,
+                      intensity: 'intense'
+                    });
+                  }
+                }
+              }
+            } else if (isRain) {
+              // Fast mode standard rain spin
+              let spinChance = Math.max(0.012, (85 - car.cornerStat) * 0.003);
+              if (isDryCompound) {
+                spinChance *= isHeavyRain ? 3.2 : 2.4;
+              } else if (isHeavyRain && car.tireCompound === 'Chuva Leve') {
+                spinChance *= 1.45;
+              } else {
+                spinChance *= 0.65;
+              }
+              if (style === 'agressivo') spinChance *= 1.5;
+              if (style === 'conservador') spinChance *= 0.45;
+              if (car.tireHealth < 35) spinChance *= 1.35;
+
+              if (Math.random() < spinChance) {
+                spinPenalty = Number((3.8 + Math.random() * 2.8).toFixed(1));
+                car.statusTag = '🌀 RODOU!';
+                if (car.isPlayer || car.pos <= 6) {
+                  lapEvents.push({
+                    lap,
+                    description: `🌀 RODADA NA CHUVA! ${car.driverName} escorregou no asfalto molhado e perdeu ${spinPenalty}s!`,
+                    type: 'incident'
+                  });
+                }
               }
             }
           }
 
-          const lapDelta = Math.max(0, (135 - (trackSkill + styleBonus + compoundSpeedBonus + wetControlBonus)) * 0.065) + tireWearPenalty + pitPenaltySeconds + spinPenalty + weatherGripLoss + (Math.random() * 0.38);
+          const lapDelta =
+            Math.max(0, (135 - (trackSkill + styleBonus + compoundSpeedBonus + wetControlBonus)) * 0.065) +
+            tireWearPenalty +
+            pitPenaltySeconds +
+            spinPenalty +
+            wrongTireDelay +
+            weatherGripLoss +
+            (Math.random() * 0.38);
           const lapSeconds = Number((baseLapSec + lapDelta).toFixed(3));
           car.cumulativeTime = Number(((car.cumulativeTime || 0) + lapSeconds).toFixed(3));
 
@@ -1122,46 +1498,95 @@ export default function App() {
           }
         });
 
-        // 2. Dynamic Head-to-Head Overtaking & Defense Battles across the entire grid
-        cars.sort((a, b) => {
-          if (!a || !b) return 0;
-          const aTime = a.cumulativeTime ?? 0;
-          const bTime = b.cumulativeTime ?? 0;
-          if (Math.abs(aTime - bTime) > 1.25) {
-            return aTime - bTime;
-          }
-          const leader = a.pos < b.pos ? a : b;
-          const attacker = a.pos < b.pos ? b : a;
-          if (!leader || !attacker) return 0;
+        // 2. Single-pass Head-to-Head Overtaking, Reduced Rain Overtaking, & Overtake Accident Risk (5% Dry / 10% Rain)
+        const activeCars = cars.filter(c => !c.dnf);
+        const retiredCars = cars.filter(c => c.dnf);
+
+        // Sort active cars by their previous track position first so we can resolve on-track battles cleanly
+        activeCars.sort((a, b) => a.prevPos - b.prevPos);
+        const battledThisLap = new Set<string>();
+
+        for (let i = 0; i < activeCars.length - 1; i++) {
+          const leader = activeCars[i];
+          const attacker = activeCars[i + 1];
+          if (!leader || !attacker || leader.dnf || attacker.dnf) continue;
+          if (leader.inPit || attacker.inPit) continue;
+          if (battledThisLap.has(attacker.driverName)) continue;
 
           const leaderTime = leader.cumulativeTime ?? 0;
           const attackerTime = attacker.cumulativeTime ?? 0;
 
+          // Attacker caught up to leader on track and is attempting an overtake
           if (attackerTime < leaderTime) {
+            battledThisLap.add(attacker.driverName);
+
             const attackPower =
               attacker.speedStat * track.straightWeight +
               attacker.cornerStat * track.cornerWeight +
               attacker.carPerf * 0.3 +
               (attacker.tireHealth - leader.tireHealth) * 0.22;
 
+            // A quantidade de ultrapassagem reduz na chuva (maior dificuldade de visão/spray e linha única molhada)
+            const rainDefenseBonus = isRain ? (isHeavyRain ? 8.2 : 5.5) : 0;
             const defensePower =
               leader.defenseStat * (0.45 + track.defenseWeight) +
               leader.cornerStat * (track.cornerWeight * 0.5) +
               leader.carPerf * 0.3 +
-              1.4;
+              1.4 +
+              rainDefenseBonus;
 
-            if (attackPower + (Math.random() * 10 - 4) > defensePower) {
-              return attacker === a ? -1 : 1;
-            } else {
-              attacker.cumulativeTime = Number((leaderTime + 0.22).toFixed(3));
+            const wetSprayBlocked = isRain && Math.random() < (isHeavyRain ? 0.50 : 0.36);
+
+            if (wetSprayBlocked || attackPower + (Math.random() * 10 - 4) <= defensePower) {
+              // Defender holds position!
+              attacker.cumulativeTime = Number((leaderTime + (isRain ? 0.32 : 0.22)).toFixed(3));
               if (leader.isPlayer || attacker.isPlayer || leader.pos <= 4) {
                 leader.statusTag = leader.statusTag || '🛡️ DEF';
               }
-              return leader === a ? -1 : 1;
+            } else {
+              // Overtake executes! In Modo Estratégico: 5% risk of accident in dry, 10% risk in rain!
+              if (isStrategicMode) {
+                const overtakeAccidentRisk = isRain ? 0.10 : 0.05;
+                if (Math.random() < overtakeAccidentRisk) {
+                  // Overtake Accident triggered!
+                  if (Math.random() < 0.45) {
+                    // Terminal crash (DNF) during overtake
+                    attacker.dnf = true;
+                    attacker.dnfReason = 'Acidente (Ultrapassagem)';
+                    attacker.statusTag = '💥 ACIDENTE ULTRAP.';
+                    attacker.lastLapTime = 'ABANDONO';
+                    attacker.cumulativeTime = 900000 - lap * 100 + attacker.prevPos;
+                    lapEvents.push({
+                      lap,
+                      description: `💥 ACIDENTE NA ULTRAPASSAGEM (${isRain ? '10% Chuva' : '5% Seco'})! ${attacker.driverName} bateu forte ao tentar passar ${leader.driverName} e abandonou!`,
+                      type: 'incident',
+                      isPlayerInvolved: attacker.isPlayer || leader.isPlayer,
+                      intensity: 'extreme'
+                    });
+                  } else {
+                    // Heavy wheel-to-wheel collision penalty
+                    const collisionLoss = Number((7.0 + Math.random() * 3.5).toFixed(1));
+                    attacker.cumulativeTime = Number((leaderTime + collisionLoss).toFixed(3));
+                    attacker.statusTag = '💥 TOQUE ULTRAP.';
+                    leader.cumulativeTime = Number((leaderTime + 1.1).toFixed(3));
+                    lapEvents.push({
+                      lap,
+                      description: `💥 ACIDENTE NA ULTRAPASSAGEM (${isRain ? '10% Chuva' : '5% Seco'})! ${attacker.driverName} tocou com ${leader.driverName} tentando ultrapassar e perdeu +${collisionLoss}s!`,
+                      type: 'incident',
+                      isPlayerInvolved: attacker.isPlayer || leader.isPlayer,
+                      intensity: 'extreme'
+                    });
+                  }
+                }
+              }
             }
           }
-          return a.pos - b.pos;
-        });
+        }
+
+        // Pure deterministic sort by cumulativeTime (active cars first, DNF cars at bottom)
+        const finalActive = cars.filter(c => !c.dnf).sort((a, b) => (a.cumulativeTime ?? 0) - (b.cumulativeTime ?? 0));
+        const finalRetired = cars.filter(c => c.dnf).sort((a, b) => (a.cumulativeTime ?? 0) - (b.cumulativeTime ?? 0));
+        cars = [...finalActive, ...finalRetired];
 
         // 3. Update positions, gaps, and record overtake badges/logs
         if (cars.length === 0) return;
@@ -1171,15 +1596,22 @@ export default function App() {
           const newPos = idx + 1;
           const posDiff = car.prevPos - newPos;
           car.pos = newPos;
+
+          if (car.dnf) {
+            car.gap = car.dnfReason === 'Falha no Motor' ? 'OUT (MOTOR)' : 'OUT (ACIDENTE)';
+            return;
+          }
+
           car.gap = idx === 0 ? 'LÍDER' : `+${Math.max(0.2, (car.cumulativeTime ?? 0) - leaderTime).toFixed(1)}s`;
 
           if (!car.inPit && posDiff > 0) {
             car.overtakesCount = (car.overtakesCount || 0) + posDiff;
-            car.statusTag = `⬆️+${posDiff}`;
+            if (!car.statusTag || !car.statusTag.startsWith('💥')) {
+              car.statusTag = `⬆️+${posDiff}`;
+            }
             const overtakenCar = cars[idx + 1];
             const isPlayerAttacker = car.isPlayer;
             const isPlayerDefender = overtakenCar?.isPlayer;
-            const isPlayerInvolved = isPlayerAttacker || isPlayerDefender;
 
             const struggleDescriptions = [
               "Freada tardia e mergulho agressivo por dentro!",
@@ -1230,7 +1662,7 @@ export default function App() {
                 intensity: 'intense'
               });
             }
-          } else if (!car.inPit && posDiff < 0) {
+          } else if (!car.inPit && posDiff < 0 && !car.statusTag) {
             car.statusTag = `⬇️${posDiff}`;
           }
         });
@@ -1246,14 +1678,29 @@ export default function App() {
         setRacePositions([...cars]);
         setRaceEventsLog(prev => [...lapEvents, ...prev].slice(0, 6));
 
-        const nextDelay = simSpeedRef.current === 2 ? 380 : 750;
-        raceIntervalRef.current = setTimeout(stepLap, nextDelay);
+        // If player suffered DNF, fast-forward remaining laps (160ms/lap) so the race finishes quickly
+        const getLapDelay = () => {
+          const pCar = cars.find(c => c.isPlayer);
+          if (pCar?.dnf) {
+            return 160;
+          }
+          if (raceModeRef.current === 'estrategico') {
+            const targetTotalMs = simSpeedRef.current === 2 ? 64000 : 92000;
+            return Math.max(900, Math.min(4800, Math.round(targetTotalMs / totalLaps)));
+          }
+          return simSpeedRef.current === 2 ? 380 : 750;
+        };
+
+        raceIntervalRef.current = setTimeout(stepLap, getLapDelay());
       } else {
         finishRaceActions(cars, track);
       }
     };
 
-    raceIntervalRef.current = setTimeout(stepLap, 750);
+    const initialDelay = raceModeRef.current === 'estrategico'
+      ? Math.max(900, Math.min(4800, Math.round((simSpeedRef.current === 2 ? 64000 : 92000) / totalLaps)))
+      : 750;
+    raceIntervalRef.current = setTimeout(stepLap, initialDelay);
   };
 
   const finishRaceActions = (finalCars: LiveRaceCar[], track: Track) => {
@@ -1263,16 +1710,17 @@ export default function App() {
     const pointsTable = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
     const playerEntry = finalCars.find(c => c.isPlayer) || finalCars[0];
     const position = playerEntry.pos;
+    const isPlayerDnf = Boolean(playerEntry.dnf);
 
     // 1. Determine Fastest Lap of the race across all cars
     const fastestLapCar = [...finalCars].sort((a, b) => a.bestLapSeconds - b.bestLapSeconds)[0] || playerEntry;
-    const isPlayerFastestLap = fastestLapCar.isPlayer && position <= 10;
+    const isPlayerFastestLap = !isPlayerDnf && fastestLapCar.isPlayer && position <= 10;
     const extraFastestLapPoints = isPlayerFastestLap ? 1 : 0;
 
     // 2. Determine Driver with Most Overtakes (Piloto do Dia)
     const mostOvertakesCar = [...finalCars].sort((a, b) => (b.overtakesCount || 0) - (a.overtakesCount || 0))[0] || playerEntry;
     const maxOvertakesCount = mostOvertakesCar.overtakesCount || 0;
-    const isPlayerMostOvertakes = playerEntry.isPlayer && (playerEntry.overtakesCount || 0) === maxOvertakesCount && maxOvertakesCount > 0;
+    const isPlayerMostOvertakes = !isPlayerDnf && playerEntry.isPlayer && (playerEntry.overtakesCount || 0) === maxOvertakesCount && maxOvertakesCount > 0;
 
     // Extra awards for player
     let extraBonusXp = 0;
@@ -1286,10 +1734,10 @@ export default function App() {
       extraBonusMoney += 0.50;
     }
 
-    const basePointsWon = position <= 10 ? pointsTable[position - 1] : 0;
+    const basePointsWon = !isPlayerDnf && position <= 10 ? pointsTable[position - 1] : 0;
     const pointsWon = basePointsWon + extraFastestLapPoints;
-    const prizeWon = Number(((position === 1 ? 1.8 : position <= 3 ? 1.0 : position <= 10 ? 0.4 : 0.1) + extraBonusMoney).toFixed(2));
-    const repGain = position === 1 ? 12 : position <= 3 ? 8 : position <= 10 ? 4 : 1;
+    const prizeWon = Number((((!isPlayerDnf && position === 1) ? 1.8 : (!isPlayerDnf && position <= 3) ? 1.0 : (!isPlayerDnf && position <= 10) ? 0.4 : 0.1) + extraBonusMoney).toFixed(2));
+    const repGain = isPlayerDnf ? 0 : position === 1 ? 12 : position <= 3 ? 8 : position <= 10 ? 4 : 1;
 
     const podium = finalCars.slice(0, 3).map(c => ({
       driverName: c.driverName,
@@ -1309,41 +1757,43 @@ export default function App() {
       let curProg = goal.currentProgress || 0;
       let newlyProgressed = false;
 
-      switch (goal.id) {
-        case 'goal_facil_1_points':
-          if (position <= 10) {
-            curProg += 1;
-            newlyProgressed = true;
-          }
-          break;
-        case 'goal_facil_2_pit':
-          if (playerEntry.pitStops <= 1) {
-            curProg += 1;
-            newlyProgressed = true;
-          }
-          break;
-        case 'goal_facil_3_score':
-          curProg += pointsWon;
-          if (pointsWon > 0) newlyProgressed = true;
-          break;
-        case 'goal_media_1_podiums':
-          if (position <= 3) {
-            curProg += 1;
-            newlyProgressed = true;
-          }
-          break;
-        case 'goal_media_2_points':
-          curProg += pointsWon;
-          if (pointsWon > 0) newlyProgressed = true;
-          break;
-        case 'goal_dificil_1_victory_top3':
-          if (position === 1) {
-            curProg = Math.max(curProg, 1);
-            newlyProgressed = true;
-          }
-          break;
-        default:
-          break;
+      if (!isPlayerDnf) {
+        switch (goal.id) {
+          case 'goal_facil_1_points':
+            if (position <= 10) {
+              curProg += 1;
+              newlyProgressed = true;
+            }
+            break;
+          case 'goal_facil_2_pit':
+            if (playerEntry.pitStops <= 1) {
+              curProg += 1;
+              newlyProgressed = true;
+            }
+            break;
+          case 'goal_facil_3_score':
+            curProg += pointsWon;
+            if (pointsWon > 0) newlyProgressed = true;
+            break;
+          case 'goal_media_1_podiums':
+            if (position <= 3) {
+              curProg += 1;
+              newlyProgressed = true;
+            }
+            break;
+          case 'goal_media_2_points':
+            curProg += pointsWon;
+            if (pointsWon > 0) newlyProgressed = true;
+            break;
+          case 'goal_dificil_1_victory_top3':
+            if (position === 1) {
+              curProg = Math.max(curProg, 1);
+              newlyProgressed = true;
+            }
+            break;
+          default:
+            break;
+        }
       }
 
       const isCompleted = curProg >= goal.targetValue;
@@ -1401,8 +1851,8 @@ export default function App() {
       careerStats: {
         ...prev.careerStats,
         races: prev.careerStats.races + 1,
-        wins: prev.careerStats.wins + (position === 1 ? 1 : 0),
-        podiums: prev.careerStats.podiums + (position <= 3 ? 1 : 0),
+        wins: prev.careerStats.wins + (!isPlayerDnf && position === 1 ? 1 : 0),
+        podiums: prev.careerStats.podiums + (!isPlayerDnf && position <= 3 ? 1 : 0),
         points: prev.careerStats.points + pointsWon
       },
       seasonGoals: updatedGoals,
@@ -1421,13 +1871,15 @@ export default function App() {
     setDriverStandings(prev =>
       prev.map(ds => {
         const finishIdx = finalCars.findIndex(c => c.driverName === ds.driverName);
+        const finishCar = finishIdx !== -1 ? finalCars[finishIdx] : undefined;
         const finishPos = finishIdx !== -1 ? finishIdx + 1 : 99;
-        let pts = finishPos <= 10 ? pointsTable[finishPos - 1] : 0;
-        if (ds.driverName === fastestLapCar.driverName && finishPos <= 10) {
+        const isCarDnf = Boolean(finishCar?.dnf);
+        let pts = !isCarDnf && finishPos <= 10 ? pointsTable[finishPos - 1] : 0;
+        if (!isCarDnf && ds.driverName === fastestLapCar.driverName && finishPos <= 10) {
           pts += 1;
         }
-        const win = finishPos === 1 ? 1 : 0;
-        const pod = finishPos <= 3 ? 1 : 0;
+        const win = !isCarDnf && finishPos === 1 ? 1 : 0;
+        const pod = !isCarDnf && finishPos <= 3 ? 1 : 0;
 
         if (!teamPointsGain[ds.teamId]) {
           teamPointsGain[ds.teamId] = { pts: 0, wins: 0 };
@@ -1685,19 +2137,37 @@ export default function App() {
     top3ProgressPercentage = Math.min(96, Math.max(8, Math.round((playerPoints / Math.max(1, thirdPlacePoints)) * 100)));
   }
 
+  const getTireShortCode = (compound: TireCompound) => {
+    if (compound === 'Macio') return 'S';
+    if (compound === 'Médio') return 'M';
+    if (compound === 'Duro') return 'H';
+    if (compound === 'Chuva Leve') return 'CL';
+    return 'CP';
+  };
+
   const getTireBadgeStyle = (compound: TireCompound) => {
     if (compound === 'Macio') return 'bg-red-500/20 text-red-400 border-red-500/50';
     if (compound === 'Médio') return 'bg-amber-500/20 text-amber-300 border-amber-500/50';
-    return 'bg-slate-200/20 text-white border-slate-300/60';
+    if (compound === 'Duro') return 'bg-slate-200/20 text-white border-slate-300/60';
+    if (compound === 'Chuva Leve') return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50';
+    return 'bg-blue-500/20 text-blue-300 border-blue-500/50';
   };
 
   const getWeatherBadge = (weather: WeatherCondition) => {
-    if (weather === 'Chuva') {
+    if (weather === 'Chuva Leve') {
       return {
-        label: 'Chuva',
+        label: 'Chuva Leve',
+        icon: '🌦️',
+        badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+        hint: 'Pista úmida! Obrigatório pneu de Chuva Leve (CL) para evitar aquaplanagem.'
+      };
+    }
+    if (weather === 'Chuva Pesada' || weather === 'Chuva') {
+      return {
+        label: 'Chuva Pesada',
         icon: '🌧️',
         badgeClass: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
-        hint: 'Aderência reduzida! O atributo de Controle & Consistência é vital para evitar rodadas.'
+        hint: 'Tempestade! Obrigatório pneu de Chuva Pesada (CP) para drenar a pista.'
       };
     }
     if (weather === 'Nublado') {
@@ -1714,6 +2184,70 @@ export default function App() {
       badgeClass: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
       hint: 'Pista seca com máxima aderência e velocidade.'
     };
+  };
+
+  const renderRaceModeToggle = () => {
+    const isLockedDuringRace = gameState === 'race' || isRacing || startLineStage !== 'none';
+
+    if (isLockedDuringRace) {
+      return (
+        <button
+          type="button"
+          onClick={() => handleToggleRaceMode()}
+          className={`min-h-[38px] px-3 py-1.5 rounded-xl border text-[10px] sm:text-[11px] font-display font-black italic uppercase flex items-center gap-1.5 shrink-0 cursor-not-allowed select-none ${
+            raceMode === 'estrategico'
+              ? 'bg-[#38bdf8]/15 border-[#38bdf8]/40 text-[#38bdf8]'
+              : 'bg-[#e6ff55]/15 border-[#e6ff55]/40 text-[#e6ff55]'
+          }`}
+          title="O modo de corrida não pode ser mudado durante a corrida. Altere no Paddock antes da largada."
+        >
+          <Lock className="w-3.5 h-3.5 shrink-0" />
+          {raceMode === 'estrategico' ? (
+            <>
+              <Timer className="w-3.5 h-3.5 shrink-0" />
+              <span>Modo Estratégico (Fixo na Corrida)</span>
+            </>
+          ) : (
+            <>
+              <Zap className="w-3.5 h-3.5 shrink-0" />
+              <span>Modo Rápido (Fixo na Corrida)</span>
+            </>
+          )}
+        </button>
+      );
+    }
+
+    return (
+      <div
+        className="flex items-center bg-[#070709] p-1 rounded-xl border border-white/15 shadow-md shrink-0 relative z-30"
+        title="Alternar entre Modo Rápido e Modo Estratégico (pode ser alterado antes da corrida; fica travado durante a corrida)"
+      >
+        <button
+          type="button"
+          onClick={() => handleToggleRaceMode('rapido')}
+          className={`min-h-[34px] px-2.5 py-1 rounded-lg text-[10px] sm:text-[11px] font-display font-black italic uppercase transition-all cursor-pointer flex items-center gap-1 ${
+            raceMode === 'rapido'
+              ? 'bg-[#e6ff55] text-black shadow'
+              : 'text-[#8e8e9c] hover:text-white'
+          }`}
+        >
+          <Zap className="w-3 h-3 shrink-0" />
+          <span>Modo Rápido</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => handleToggleRaceMode('estrategico')}
+          className={`min-h-[34px] px-2.5 py-1 rounded-lg text-[10px] sm:text-[11px] font-display font-black italic uppercase transition-all cursor-pointer flex items-center gap-1 ${
+            raceMode === 'estrategico'
+              ? 'bg-[#38bdf8] text-black shadow'
+              : 'text-[#8e8e9c] hover:text-white'
+          }`}
+        >
+          <Timer className="w-3 h-3 shrink-0" />
+          <span>Modo Estratégico</span>
+        </button>
+      </div>
+    );
   };
 
   return (
@@ -1803,7 +2337,11 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  {renderRaceModeToggle()}
+
+                  <PWAInstallButton variant="header" />
+
                   <button
                     type="button"
                     onClick={() => setIsSettingsOpen(true)}
@@ -1857,12 +2395,18 @@ export default function App() {
               )}
 
               {/* Section Header */}
-              <div className="flex items-center justify-between shrink-0">
-                <h2 className="text-sm sm:text-base font-display font-black italic uppercase text-[#e6ff55] leading-tight">
-                  SELECIONE SEU PILOTO // 4 SLOTS DE CARREIRA
-                </h2>
+              <div className="flex flex-wrap items-center justify-between gap-2 shrink-0">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm sm:text-base font-display font-black italic uppercase text-[#e6ff55] leading-tight">
+                    SELECIONE SEU PILOTO // 4 SLOTS DE CARREIRA
+                  </h2>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-[9px] sm:text-[10px] font-mono font-bold text-emerald-300 uppercase">
+                    <Save className="w-3 h-3 text-emerald-400 shrink-0" />
+                    <span>Salvos no Cache deste Navegador</span>
+                  </span>
+                </div>
                 <span className="text-[10px] font-mono text-[#8e8e9c] hidden md:inline">
-                  Toque em qualquer card ou botão para iniciar imediatamente
+                  Cada navegador mantém seus próprios pilotos salvos automaticamente em cache local
                 </span>
               </div>
 
@@ -1882,6 +2426,7 @@ export default function App() {
                           selectDriverSlot(index);
                         } else {
                           setCreatingSlotId(index);
+                          setNewDriverRaceMode(raceMode);
                           setIsCreatingDriver(true);
                         }
                       }}
@@ -1897,6 +2442,15 @@ export default function App() {
                                 SLOT 0{index + 1}
                               </span>
                               <div className="flex items-center gap-1">
+                                <span
+                                  className={`text-[8px] font-mono font-bold px-1.5 py-0.5 rounded-full border ${
+                                    slot.raceMode === 'estrategico'
+                                      ? 'bg-[#38bdf8]/15 text-[#38bdf8] border-[#38bdf8]/30'
+                                      : 'bg-[#e6ff55]/15 text-[#e6ff55] border-[#e6ff55]/30'
+                                  }`}
+                                >
+                                  {slot.raceMode === 'estrategico' ? '🧠 ESTRAT.' : '⚡ RÁPIDO'}
+                                </span>
                                 <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full bg-white/5 text-white border border-white/10">
                                   OVR {slotAvg}
                                 </span>
@@ -2011,6 +2565,7 @@ export default function App() {
                             onClick={(e) => {
                               e.stopPropagation();
                               setCreatingSlotId(index);
+                              setNewDriverRaceMode(raceMode);
                               setIsCreatingDriver(true);
                             }}
                             className="w-full min-h-[44px] sm:min-h-[48px] bg-[#1e1e28] group-hover:bg-[#e6ff55] group-hover:text-black hover:brightness-110 active:scale-[0.98] text-[#e6ff55] font-display font-black italic uppercase py-2.5 px-3 rounded-xl text-xs sm:text-sm tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-[#e6ff55]/30 shrink-0 relative z-30 pointer-events-auto shadow-md"
@@ -2179,17 +2734,86 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="flex gap-2.5 pt-2 relative z-30">
+              {/* RACE MODE SELECTION PRESENTED AT THE START OF CAREER */}
+              <div className="bg-[#070709] border border-white/10 rounded-2xl p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-[#e6ff55]">
+                    Modo de Corrida Inicial (Escolha para sua Carreira)
+                  </label>
+                  <span className="text-[9px] font-mono text-[#8e8e9c] flex items-center gap-1">
+                    <Lock className="w-3 h-3 text-[#ff5f8f]" />
+                    <span>Fixo durante a corrida</span>
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewDriverRaceMode('rapido')}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                      newDriverRaceMode === 'rapido'
+                        ? 'bg-[#e6ff55]/15 border-[#e6ff55] ring-2 ring-[#e6ff55]/35 text-white shadow-md'
+                        : 'bg-[#14141c] border-white/10 text-[#8e8e9c] hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs font-display font-black italic uppercase flex items-center gap-1 text-[#e6ff55]">
+                        <Zap className="w-3.5 h-3.5 shrink-0" />
+                        <span>Modo Rápido</span>
+                      </span>
+                      {newDriverRaceMode === 'rapido' && (
+                        <span className="text-[8px] font-mono font-bold px-1.5 py-0.5 rounded bg-[#e6ff55] text-black">
+                          ESCOLHIDO
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] font-mono text-slate-300 mt-1 leading-snug">
+                      Corridas aceleradas (~20s) e paradas automáticas &lt; 25%.
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setNewDriverRaceMode('estrategico')}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                      newDriverRaceMode === 'estrategico'
+                        ? 'bg-[#38bdf8]/15 border-[#38bdf8] ring-2 ring-[#38bdf8]/35 text-white shadow-md'
+                        : 'bg-[#14141c] border-white/10 text-[#8e8e9c] hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs font-display font-black italic uppercase flex items-center gap-1 text-[#38bdf8]">
+                        <Timer className="w-3.5 h-3.5 shrink-0" />
+                        <span>Modo Estratégico</span>
+                      </span>
+                      {newDriverRaceMode === 'estrategico' && (
+                        <span className="text-[8px] font-mono font-bold px-1.5 py-0.5 rounded bg-[#38bdf8] text-black">
+                          ESCOLHIDO
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] font-mono text-slate-300 mt-1 leading-snug">
+                      1 a 2 min, 1-2 paradas oficiais, pneus de chuva e riscos reais.
+                    </p>
+                  </button>
+                </div>
+
+                <p className="text-[10px] font-mono text-[#8e8e9c] leading-tight">
+                  💡 Pode ser alterado depois no Paddock ou antes da largada. Não pode ser alterado durante a corrida.
+                </p>
+              </div>
+
+              <div className="flex gap-2.5 pt-1 relative z-30">
                 <button
                   type="button"
                   onClick={() => setIsCreatingDriver(false)}
-                  className="flex-1 min-h-[48px] bg-[#1e1e28] hover:bg-[#282836] text-white font-display font-black italic uppercase py-2.5 rounded-xl text-xs sm:text-sm transition-colors cursor-pointer border border-white/10"
+                  className="flex-1 min-h-[46px] bg-[#1e1e28] hover:bg-[#282836] text-white font-display font-black italic uppercase py-2.5 rounded-xl text-xs sm:text-sm transition-colors cursor-pointer border border-white/10"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 min-h-[48px] bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase py-2.5 rounded-xl shadow-lg shadow-[#e6ff55]/20 cursor-pointer text-xs sm:text-sm"
+                  className="flex-1 min-h-[46px] bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase py-2.5 rounded-xl shadow-lg shadow-[#e6ff55]/20 cursor-pointer text-xs sm:text-sm"
                 >
                   Iniciar Carreira
                 </button>
@@ -2397,7 +3021,21 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  {renderRaceModeToggle()}
+
+                  <PWAInstallButton variant="header" />
+
+                  <button
+                    type="button"
+                    onClick={() => setIsTutorialOpen(true)}
+                    className="min-h-[38px] px-3 py-1.5 bg-[#191924] hover:bg-[#242434] text-[#e6ff55] font-mono text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 border border-[#e6ff55]/30"
+                    title="Abrir tutorial rápido de como o jogo funciona"
+                  >
+                    <HelpCircle className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">TUTORIAL</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => setIsCareerPanelMinimized(false)}
@@ -2444,7 +3082,9 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    {renderRaceModeToggle()}
+
                     <button
                       type="button"
                       onClick={() => setIsCareerPanelMinimized(true)}
@@ -2606,7 +3246,7 @@ export default function App() {
                         }`}
                       >
                         <Wrench className="w-4 h-4" />
-                        <span>Chassi, Capacete & Autosaves</span>
+                        <span>Chassi & Capacete</span>
                       </button>
                     </div>
 
@@ -2753,14 +3393,14 @@ export default function App() {
                         </div>
                       </div>
                     ) : (
-                      /* SUB-PAGE 2: CHASSI, CAPACETE & AUTOSAVES DE TEMPORADA */
+                      /* SUB-PAGE 2: CHASSI & CAPACETE (SEM SLOTS E AUTOSAVES DE TEMPORADA) */
                       <div className={`flex-1 min-h-0 grid gap-3 ${isWidescreenMode ? 'grid-cols-1 lg:grid-cols-12' : 'grid-cols-1'} overflow-hidden`}>
-                        {/* LEFT 6 COLS: CHASSI & CAPACETE */}
-                        <div className={`${isWidescreenMode ? 'lg:col-span-6' : ''} bg-[#14141c] border border-white/5 rounded-2xl p-4 flex flex-col justify-between gap-3 shadow-xl min-h-0`}>
+                        {/* LEFT 7 COLS: CHASSI & ESCUDERIA OFICIAL */}
+                        <div className={`${isWidescreenMode ? 'lg:col-span-7' : ''} bg-[#14141c] border border-white/5 rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-3.5 shadow-xl min-h-0`}>
                           <div className="flex items-center justify-between gap-2">
                             <div className="min-w-0">
-                              <span className="text-[10px] font-mono uppercase text-[#8e8e9c] block">Escuderia Oficial & Bônus</span>
-                              <h4 className="text-lg sm:text-xl font-display font-black italic uppercase truncate" style={{ color: currentTeam.color }}>
+                              <span className="text-[10px] font-mono uppercase text-[#8e8e9c] block">Chassi Oficial & Escuderia</span>
+                              <h4 className="text-xl sm:text-2xl font-display font-black italic uppercase truncate" style={{ color: currentTeam.color }}>
                                 {currentTeam.name}
                               </h4>
                             </div>
@@ -2769,160 +3409,80 @@ export default function App() {
                             </span>
                           </div>
 
-                          <div className="flex-1 min-h-[100px] flex items-center justify-center p-4 bg-black/50 rounded-2xl border border-white/5">
+                          <div className="flex-1 min-h-[120px] flex items-center justify-center p-5 bg-black/50 rounded-2xl border border-white/5">
                             <CategoryCarVector 
                               category={driver.category} 
                               teamColor={currentTeam.color} 
                               helmetColor={driver.helmetColor} 
-                              className="w-full h-24 sm:h-28" 
+                              className="w-full h-28 sm:h-36" 
                             />
                           </div>
 
-                          {/* Helmet Customizer with Large Click Targets */}
-                          <div className="bg-[#070709] p-3.5 rounded-2xl border border-white/5 flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <HelmetVector 
-                                primaryColor={driver.helmetColor} 
-                                secondaryColor={driver.helmetSecondaryColor || '#1e3a8a'} 
-                                className="w-11 h-11 shrink-0" 
-                              />
-                              <div className="min-w-0">
-                                <span className="text-xs font-display font-black italic uppercase text-white block truncate">Pintura do Capacete</span>
-                                <span className="text-[11px] font-mono text-[#8e8e9c] block truncate">Toque nas cores ao lado para personalizar</span>
-                              </div>
+                          <div className="grid grid-cols-3 gap-2.5 text-xs font-mono bg-[#070709] p-3 rounded-2xl border border-white/5">
+                            <div>
+                              <span className="text-[10px] text-[#8e8e9c] uppercase block">Categoria</span>
+                              <strong className="text-white uppercase">{driver.category}</strong>
                             </div>
-                            <div className="flex items-center gap-2.5 shrink-0 relative z-20">
-                              <label className="flex items-center gap-1.5 bg-[#14141c] px-2.5 py-1.5 rounded-xl border border-white/10 cursor-pointer hover:border-[#e6ff55]">
-                                <input 
-                                  type="color" 
-                                  value={driver.helmetColor}
-                                  onChange={(e) => updateActiveDriver(prev => ({ ...prev, helmetColor: e.target.value }))}
-                                  className="w-8 h-8 bg-transparent cursor-pointer rounded"
-                                  title="Cor Principal" 
-                                />
-                                <span className="text-[10px] font-mono text-slate-300 hidden sm:inline">Cor 1</span>
-                              </label>
-                              <label className="flex items-center gap-1.5 bg-[#14141c] px-2.5 py-1.5 rounded-xl border border-white/10 cursor-pointer hover:border-[#e6ff55]">
-                                <input 
-                                  type="color" 
-                                  value={driver.helmetSecondaryColor || '#1e3a8a'}
-                                  onChange={(e) => updateActiveDriver(prev => ({ ...prev, helmetSecondaryColor: e.target.value }))}
-                                  className="w-8 h-8 bg-transparent cursor-pointer rounded"
-                                  title="Cor Secundária" 
-                                />
-                                <span className="text-[10px] font-mono text-slate-300 hidden sm:inline">Cor 2</span>
-                              </label>
+                            <div className="text-center">
+                              <span className="text-[10px] text-[#8e8e9c] uppercase block">Acerto Base</span>
+                              <strong className="text-[#38bdf8]">{currentTeam.bonusType}</strong>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-[10px] text-[#8e8e9c] uppercase block">Temporada</span>
+                              <strong className="text-[#e6ff55]">Ano {currentSeason}</strong>
                             </div>
                           </div>
                         </div>
 
-                        {/* RIGHT 6 COLS: SLOTS DE CARREIRA & AUTOSAVES DE TEMPORADA */}
-                        <div className={`${isWidescreenMode ? 'lg:col-span-6' : ''} bg-[#14141c] border border-white/5 rounded-2xl p-4 flex flex-col justify-between gap-3 shadow-xl min-h-0 overflow-hidden`}>
-                          <div className="flex items-center justify-between border-b border-white/5 pb-2 shrink-0">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <span className="p-2 rounded-xl bg-[#e6ff55]/20 text-[#e6ff55] shrink-0">
-                                <Save className="w-4 h-4" />
-                              </span>
-                              <div className="min-w-0">
-                                <h4 className="text-xs sm:text-sm font-display font-black italic uppercase text-white tracking-wider truncate">
-                                  SLOTS & AUTOSAVES DE TEMPORADA
-                                </h4>
-                                <span className="text-[11px] text-[#8e8e9c] font-mono block truncate">
-                                  Troque de piloto rapidamente ou consulte checkpoints anuais
-                                </span>
-                              </div>
-                            </div>
-                            <span className="text-xs font-mono font-bold text-[#e6ff55] bg-[#e6ff55]/10 px-2.5 py-1 rounded-full border border-[#e6ff55]/20 shrink-0">
-                              SLOT 0{(selectedSlotIndex ?? 0) + 1} ATIVO
+                        {/* RIGHT 5 COLS: PINTURA & PERSONALIZAÇÃO DO CAPACETE */}
+                        <div className={`${isWidescreenMode ? 'lg:col-span-5' : ''} bg-[#14141c] border border-white/5 rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-3.5 shadow-xl min-h-0`}>
+                          <div>
+                            <span className="text-[10px] font-mono uppercase text-[#8e8e9c] block">Identidade Visual na Pista</span>
+                            <h4 className="text-lg sm:text-xl font-display font-black italic uppercase text-white">
+                              PINTURA DO CAPACETE
+                            </h4>
+                          </div>
+
+                          <div className="flex-1 min-h-[110px] bg-black/50 rounded-2xl border border-white/5 p-4 flex flex-col items-center justify-center gap-2">
+                            <HelmetVector 
+                              primaryColor={driver.helmetColor} 
+                              secondaryColor={driver.helmetSecondaryColor || '#1e3a8a'} 
+                              className="w-24 h-24 sm:w-28 sm:h-28 shrink-0" 
+                            />
+                            <span className="text-[11px] font-mono text-[#8e8e9c]">
+                              Piloto: <strong className="text-white">{driver.name}</strong>
                             </span>
                           </div>
 
-                          {/* QUICK 4 SLOTS SELECTOR WITH LARGE HIT TARGETS */}
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 shrink-0 relative z-20">
-                            {slots.map((s, idx) => {
-                              const isCurrent = idx === selectedSlotIndex;
-                              return (
-                                <button
-                                  key={idx}
-                                  type="button"
-                                  onClick={() => {
-                                    if (isCurrent) return;
-                                    if (s) {
-                                      selectDriverSlot(idx);
-                                    } else {
-                                      handleSaveAndReturnToMenu();
-                                      setCreatingSlotId(idx);
-                                      setIsCreatingDriver(true);
-                                    }
-                                  }}
-                                  className={`min-h-[48px] p-2 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                                    isCurrent
-                                      ? 'bg-[#e6ff55]/15 border-[#e6ff55] text-white shadow-md'
-                                      : 'bg-[#070709] hover:bg-[#191924] border-white/10 hover:border-[#e6ff55]/50 text-slate-300'
-                                  }`}
-                                >
-                                  <div className="flex items-center justify-between w-full text-[9px] font-mono font-bold">
-                                    <span className={isCurrent ? 'text-[#e6ff55]' : 'text-[#8e8e9c]'}>SLOT 0{idx + 1}</span>
-                                    {s && <span className="uppercase text-[#ff5f8f]">{s.category}</span>}
-                                  </div>
-                                  <div className="text-[11px] font-display font-black italic uppercase truncate w-full mt-0.5">
-                                    {s ? s.name : '+ Novo Piloto'}
-                                  </div>
-                                </button>
-                              );
-                            })}
-                          </div>
-
-                          <div className="flex-1 min-h-0 space-y-1.5 overflow-y-auto pr-1">
-                            {(driver.seasonAutosaves || []).length > 0 ? (
-                              [...(driver.seasonAutosaves || [])].reverse().map((as, idx) => {
-                                const tm = TEAMS.find(t => t.id === as.teamId) || TEAMS[0];
-                                const avg = calculateDriverAvg(as.attributes);
-                                return (
-                                  <div 
-                                    key={idx}
-                                    className="bg-[#070709] border border-white/5 rounded-xl p-2.5 px-3 flex items-center justify-between text-xs font-mono"
-                                  >
-                                    <div className="min-w-0">
-                                      <div className="flex items-center gap-2">
-                                        <span className="font-display font-black italic text-[#e6ff55] text-xs sm:text-sm">
-                                          Temporada {as.season}
-                                        </span>
-                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#ff5f8f]/20 text-[#ff5f8f] uppercase">
-                                          {as.category.toUpperCase()}
-                                        </span>
-                                      </div>
-                                      <div className="text-[11px] font-bold truncate mt-0.5" style={{ color: tm.color }}>
-                                        {tm.name}
-                                      </div>
-                                    </div>
-
-                                    <div className="text-right shrink-0">
-                                      <div className="text-xs font-bold text-white">
-                                        {avg} OVR · ${as.money.toFixed(1)}M
-                                      </div>
-                                      <div className="text-[10px] text-[#8e8e9c]">
-                                        {new Date(as.savedAt).toLocaleDateString()}
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })
-                            ) : (
-                              <div className="text-xs text-[#8e8e9c] font-mono text-center py-4">
-                                Nenhum autosave de temporada registrado ainda.
+                          {/* Helmet Customizer with Large Click Targets */}
+                          <div className="grid grid-cols-2 gap-3 relative z-20 shrink-0">
+                            <label className="min-h-[52px] flex items-center justify-between gap-2.5 bg-[#070709] px-3.5 py-2.5 rounded-2xl border border-white/10 cursor-pointer hover:border-[#e6ff55] transition-colors">
+                              <div className="min-w-0">
+                                <span className="text-xs font-display font-black italic uppercase text-white block">Cor Principal</span>
+                                <span className="text-[10px] font-mono text-[#8e8e9c] uppercase">{driver.helmetColor}</span>
                               </div>
-                            )}
+                              <input 
+                                type="color" 
+                                value={driver.helmetColor}
+                                onChange={(e) => updateActiveDriver(prev => ({ ...prev, helmetColor: e.target.value }))}
+                                className="w-9 h-9 bg-transparent cursor-pointer rounded shrink-0"
+                                title="Cor Principal" 
+                              />
+                            </label>
+                            <label className="min-h-[52px] flex items-center justify-between gap-2.5 bg-[#070709] px-3.5 py-2.5 rounded-2xl border border-white/10 cursor-pointer hover:border-[#e6ff55] transition-colors">
+                              <div className="min-w-0">
+                                <span className="text-xs font-display font-black italic uppercase text-white block">Cor Secundária</span>
+                                <span className="text-[10px] font-mono text-[#8e8e9c] uppercase">{driver.helmetSecondaryColor || '#1e3a8a'}</span>
+                              </div>
+                              <input 
+                                type="color" 
+                                value={driver.helmetSecondaryColor || '#1e3a8a'}
+                                onChange={(e) => updateActiveDriver(prev => ({ ...prev, helmetSecondaryColor: e.target.value }))}
+                                className="w-9 h-9 bg-transparent cursor-pointer rounded shrink-0"
+                                title="Cor Secundária" 
+                              />
+                            </label>
                           </div>
-
-                          <button
-                            type="button"
-                            onClick={handleSaveAndReturnToMenu}
-                            className="w-full min-h-[46px] bg-[#e6ff55] hover:brightness-110 text-black font-display font-black italic uppercase py-2.5 px-4 rounded-xl text-xs sm:text-sm transition-all cursor-pointer flex items-center justify-center gap-2 shrink-0 relative z-20 shadow-lg shadow-[#e6ff55]/20"
-                          >
-                            <Save className="w-4 h-4 shrink-0" />
-                            <span>SALVAR CARREIRA & ABRIR TELA DE SLOTS</span>
-                          </button>
                         </div>
                       </div>
                     )}
@@ -3568,42 +4128,66 @@ export default function App() {
 
                           {/* RIGHT 7 COLS: LARGE TIRE BUTTONS + PACE & PIT TOGGLES */}
                           <div className={`${isWidescreenMode ? 'lg:col-span-7' : ''} bg-[#14141c] border border-white/5 rounded-2xl p-4 flex flex-col justify-between gap-4 shadow-xl relative z-20`}>
-                            {/* 1. TIRE COMPOUND SELECTION */}
+                            {/* 1. TIRE COMPOUND SELECTION (SECO + CHUVA LEVE & PESADA) */}
                             {(() => {
                               const tireDurability = getTireDurabilityDetails(currentTrack);
+                              const allTires: {
+                                id: TireCompound;
+                                badge: string;
+                                color: string;
+                                title: string;
+                                info: typeof tireDurability.Macio;
+                              }[] = [
+                                {
+                                  id: 'Macio',
+                                  badge: 'S',
+                                  color: 'border-red-500 text-red-400 bg-red-500/10',
+                                  title: 'Macio',
+                                  info: tireDurability.Macio
+                                },
+                                {
+                                  id: 'Médio',
+                                  badge: 'M',
+                                  color: 'border-[#e6ff55] text-[#e6ff55] bg-[#e6ff55]/10',
+                                  title: 'Médio',
+                                  info: tireDurability.Médio
+                                },
+                                {
+                                  id: 'Duro',
+                                  badge: 'H',
+                                  color: 'border-slate-200 text-white bg-slate-200/10',
+                                  title: 'Duro',
+                                  info: tireDurability.Duro
+                                },
+                                {
+                                  id: 'Chuva Leve',
+                                  badge: 'CL',
+                                  color: 'border-emerald-400 text-emerald-300 bg-emerald-500/15',
+                                  title: 'Chuva Leve',
+                                  info: tireDurability['Chuva Leve']
+                                },
+                                {
+                                  id: 'Chuva Pesada',
+                                  badge: 'CP',
+                                  color: 'border-blue-400 text-blue-300 bg-blue-500/15',
+                                  title: 'Chuva Pesada',
+                                  info: tireDurability['Chuva Pesada']
+                                }
+                              ];
+
                               return (
-                                <div className="space-y-2.5">
-                                  <div className="flex items-center justify-between">
+                                <div className="space-y-3">
+                                  <div className="flex flex-wrap items-center justify-between gap-1">
                                     <span className="text-xs font-display font-black italic uppercase text-white tracking-wider">
-                                      1. ESCOLHA O COMPOSTO DE PNEU PARA A LARGADA
+                                      1. PNEU DE LARGADA (SECO & CHUVA LEVE / PESADA)
                                     </span>
-                                    <span className="text-[11px] font-mono text-[#8e8e9c]">Pit Stop auto &lt; 27%</span>
+                                    <span className="text-[11px] font-mono text-[#8e8e9c]">
+                                      {raceMode === 'estrategico' ? 'Modo Estratégico (1-2 min · 1-2 paradas)' : 'Modo Rápido · Troca auto < 25%'}
+                                    </span>
                                   </div>
 
-                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                    {([
-                                      {
-                                        id: 'Macio' as TireCompound,
-                                        badge: 'S',
-                                        color: 'border-red-500 text-red-400 bg-red-500/10',
-                                        title: 'Macio',
-                                        info: tireDurability.Macio
-                                      },
-                                      {
-                                        id: 'Médio' as TireCompound,
-                                        badge: 'M',
-                                        color: 'border-[#e6ff55] text-[#e6ff55] bg-[#e6ff55]/10',
-                                        title: 'Médio',
-                                        info: tireDurability.Médio
-                                      },
-                                      {
-                                        id: 'Duro' as TireCompound,
-                                        badge: 'H',
-                                        color: 'border-slate-200 text-white bg-slate-200/10',
-                                        title: 'Duro',
-                                        info: tireDurability.Duro
-                                      }
-                                    ]).map(t => {
+                                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                                    {allTires.map(t => {
                                       const isSelected = startingTire === t.id;
                                       const isOpt = t.info.isOptimal;
 
@@ -3611,8 +4195,8 @@ export default function App() {
                                         <button
                                           key={t.id}
                                           type="button"
-                                          onClick={() => setStartingTire(t.id)}
-                                          className={`min-h-[96px] p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                                          onClick={() => handleSelectStartingTire(t.id)}
+                                          className={`min-h-[90px] p-2.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                                             isSelected
                                               ? 'bg-[#1e1e2c] border-[#e6ff55] ring-2 ring-[#e6ff55]/40 shadow-lg'
                                               : isOpt
@@ -3621,25 +4205,50 @@ export default function App() {
                                           }`}
                                         >
                                           <div className="flex items-center justify-between gap-1">
-                                            <div className="flex items-center gap-2 min-w-0">
-                                              <span className={`w-6 h-6 rounded-full border flex items-center justify-center text-xs font-mono font-black shrink-0 ${t.color}`}>
-                                                {t.badge}
-                                              </span>
-                                              <span className="text-sm font-display font-black italic uppercase text-white">{t.title}</span>
-                                            </div>
+                                            <span className={`px-1.5 py-0.5 rounded-md border text-[10px] font-mono font-black shrink-0 ${t.color}`}>
+                                              {t.badge}
+                                            </span>
                                             {isOpt && (
-                                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#e6ff55]/20 text-[#e6ff55] border border-[#e6ff55]/40 font-mono font-bold shrink-0">
+                                              <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-[#e6ff55]/20 text-[#e6ff55] border border-[#e6ff55]/40 font-mono font-bold shrink-0">
                                                 ★ IDEAL
                                               </span>
                                             )}
                                           </div>
 
-                                          <div className="text-xs font-mono text-slate-200 font-bold mt-2">
-                                            Dura ~{t.info.minLaps} a {t.info.maxLaps} voltas
+                                          <div className="mt-1">
+                                            <div className="text-xs font-display font-black italic uppercase text-white leading-tight">
+                                              {t.title}
+                                            </div>
+                                            <div className="text-[10px] font-mono text-slate-300 font-bold mt-0.5">
+                                              ~{t.info.minLaps}-{t.info.maxLaps}v
+                                            </div>
                                           </div>
                                         </button>
                                       );
                                     })}
+                                  </div>
+
+                                  {/* Pre-select Next Pit Stop Tire */}
+                                  <div className="bg-[#070709] p-2.5 rounded-xl border border-white/5 flex flex-wrap items-center justify-between gap-2">
+                                    <span className="text-[11px] font-mono text-[#8e8e9c]">
+                                      Pneu programado p/ 1º Pit Stop (pode mudar durante a corrida):
+                                    </span>
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                      {allTires.map(t => (
+                                        <button
+                                          key={`next-${t.id}`}
+                                          type="button"
+                                          onClick={() => handleSelectNextPitTire(t.id)}
+                                          className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold border cursor-pointer transition-all ${
+                                            nextPitTire === t.id
+                                              ? 'bg-[#e6ff55] text-black border-[#e6ff55]'
+                                              : 'bg-[#14141c] text-slate-300 border-white/10 hover:border-white/30'
+                                          }`}
+                                        >
+                                          {t.title}
+                                        </button>
+                                      ))}
+                                    </div>
                                   </div>
                                 </div>
                               );
@@ -4107,7 +4716,9 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                {renderRaceModeToggle()}
+
                 {!isQualifyingRunning && (
                   <div className="flex items-center gap-1 bg-[#070709] p-1 rounded-xl border border-white/10">
                     <button
@@ -4285,12 +4896,14 @@ export default function App() {
                             <div className="bg-[#070709] p-3.5 rounded-2xl border border-white/10 space-y-3 flex-1 flex flex-col justify-between shadow-lg">
                               <div className="flex items-center justify-between">
                                 <span className="text-xs font-display font-black italic uppercase text-white">
-                                  SELECIONE O PNEU DE LARGADA
+                                  SELECIONE O PNEU DE LARGADA (SECO & CHUVA)
                                 </span>
-                                <span className="text-xs text-[#8e8e9c] font-mono">Troca auto no box &lt; 27%</span>
+                                <span className="text-xs text-[#8e8e9c] font-mono">
+                                  Próx. Box: <strong className="text-[#e6ff55]">{nextPitTire}</strong>
+                                </span>
                               </div>
 
-                              <div className="grid grid-cols-3 gap-2.5">
+                              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                                 {([
                                   { 
                                     id: 'Macio' as TireCompound, 
@@ -4313,6 +4926,20 @@ export default function App() {
                                     badgeColor: 'border-slate-200 text-white bg-slate-200/10',
                                     info: tireDetails.Duro 
                                   },
+                                  { 
+                                    id: 'Chuva Leve' as TireCompound, 
+                                    label: 'Chuva Leve', 
+                                    badge: 'CL', 
+                                    badgeColor: 'border-emerald-400 text-emerald-300 bg-emerald-500/15',
+                                    info: tireDetails['Chuva Leve'] 
+                                  },
+                                  { 
+                                    id: 'Chuva Pesada' as TireCompound, 
+                                    label: 'Chuva Pesada', 
+                                    badge: 'CP', 
+                                    badgeColor: 'border-blue-400 text-blue-300 bg-blue-500/15',
+                                    info: tireDetails['Chuva Pesada'] 
+                                  },
                                 ]).map(t => {
                                   const isSelected = startingTire === t.id;
                                   const isOpt = t.info.isOptimal;
@@ -4321,8 +4948,8 @@ export default function App() {
                                     <button
                                       key={t.id}
                                       type="button"
-                                      onClick={() => setStartingTire(t.id)}
-                                      className={`min-h-[86px] p-3 rounded-2xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
+                                      onClick={() => handleSelectStartingTire(t.id)}
+                                      className={`min-h-[82px] p-2.5 rounded-2xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
                                         isSelected
                                           ? 'bg-[#1e1e2c] border-[#e6ff55] ring-2 ring-[#e6ff55]/40 text-white shadow-lg'
                                           : isOpt
@@ -4331,20 +4958,20 @@ export default function App() {
                                       }`}
                                     >
                                       <div className="flex items-center justify-between gap-1">
-                                        <div className="flex items-center gap-2">
-                                          <span className={`w-6 h-6 rounded-full border flex items-center justify-center text-xs font-mono font-bold shrink-0 ${t.badgeColor}`}>
-                                            {t.badge}
-                                          </span>
-                                          <span className="text-sm font-display font-black italic uppercase">{t.label}</span>
-                                        </div>
+                                        <span className={`px-1.5 py-0.5 rounded-md border text-[10px] font-mono font-bold shrink-0 ${t.badgeColor}`}>
+                                          {t.badge}
+                                        </span>
                                         {isOpt && (
-                                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#e6ff55]/20 text-[#e6ff55] border border-[#e6ff55]/40 font-mono font-bold">
+                                          <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-[#e6ff55]/20 text-[#e6ff55] border border-[#e6ff55]/40 font-mono font-bold">
                                             ★ IDEAL
                                           </span>
                                         )}
                                       </div>
-                                      <div className="text-xs font-mono font-bold text-slate-200 mt-1">
-                                        ~{t.info.minLaps} a {t.info.maxLaps} voltas
+                                      <div className="mt-1">
+                                        <div className="text-xs font-display font-black italic uppercase leading-tight">{t.label}</div>
+                                        <div className="text-[10px] font-mono font-bold text-slate-300 mt-0.5">
+                                          ~{t.info.minLaps}-{t.info.maxLaps}v
+                                        </div>
                                       </div>
                                     </button>
                                   );
@@ -4469,13 +5096,36 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2.5 shrink-0">
-                      <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#14141c] border border-white/10 text-[11px] font-mono text-[#8e8e9c]">
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#14141c] border border-white/10 text-[11px] font-mono text-[#8e8e9c]">
                         <span>Sua Posição:</span>
                         <strong className="text-[#e6ff55]">P{playerRaceCar?.pos || '-'}</strong>
                         <span>·</span>
                         <span>Pneu {startingTire}</span>
                       </span>
+
+                      <button
+                        type="button"
+                        onClick={toggleQuickSound}
+                        className={`min-h-[42px] px-3 py-2 font-mono text-xs font-bold rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                          gameSettings.soundEnabled
+                            ? 'bg-[#191924] hover:bg-[#252535] text-[#e6ff55] border-[#e6ff55]/40'
+                            : 'bg-[#14141c] hover:bg-[#1e1e2a] text-[#8e8e9c] border-white/10'
+                        }`}
+                        title={gameSettings.soundEnabled ? 'Desativar som da largada' : 'Ativar som do motor e semáforo'}
+                      >
+                        {gameSettings.soundEnabled ? (
+                          <>
+                            <Volume2 className="w-4 h-4 text-[#e6ff55]" />
+                            <span className="hidden sm:inline">Som Motor ON</span>
+                          </>
+                        ) : (
+                          <>
+                            <VolumeX className="w-4 h-4 text-[#8e8e9c]" />
+                            <span className="hidden sm:inline">Som OFF</span>
+                          </>
+                        )}
+                      </button>
 
                       <button
                         type="button"
@@ -4492,8 +5142,17 @@ export default function App() {
                   <div className="max-w-3xl mx-auto w-full">
                     <div className="bg-[#14141c] border-2 border-white/15 rounded-2xl p-3 sm:p-3.5 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-3 relative overflow-hidden">
                       <div className="flex flex-col items-center sm:items-start gap-1.5">
-                        <div className="text-[10px] font-mono uppercase text-[#8e8e9c] tracking-widest">
-                          SEMÁFORO DE LARGADA // FIA GANTRY
+                        <div className="text-[10px] font-mono uppercase text-[#8e8e9c] tracking-widest flex items-center gap-2">
+                          <span>SEMÁFORO DE LARGADA // FIA GANTRY</span>
+                          {gameSettings.soundEnabled && (
+                            <span className="text-[#e6ff55] font-bold">
+                              {startLineStage === 'lights_out'
+                                ? '· 🔊 ACELERAÇÃO MÁXIMA (12.800 RPM)'
+                                : startLineStage === 'lights_count'
+                                ? `· 🔊 GIRO SUBINDO (${4500 + redLightsCount * 1450} RPM)`
+                                : '· 🔊 MOTOR EM MARCHA LENTA'}
+                            </span>
+                          )}
                         </div>
                         {/* 5 LED LIGHT PAIRS */}
                         <div className="flex items-center gap-3 sm:gap-4">
@@ -4659,7 +5318,7 @@ export default function App() {
                                     car.tireCompound
                                   )}`}
                                 >
-                                  {car.tireCompound[0]}
+                                  {getTireShortCode(car.tireCompound)}
                                 </span>
                               </div>
 
@@ -4815,17 +5474,19 @@ export default function App() {
               </button>
             </div>
 
-            <div className="flex items-center gap-3 sm:gap-4 font-mono shrink-0">
+            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 font-mono shrink-0">
+              {renderRaceModeToggle()}
+
               <button
                 type="button"
                 onClick={() => setSimSpeed(prev => (prev === 1 ? 2 : 1))}
-                className={`min-h-[40px] px-3.5 py-1.5 rounded-xl text-xs font-bold border cursor-pointer flex items-center gap-1.5 transition-all shadow-md ${
+                className={`min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold border cursor-pointer flex items-center gap-1.5 transition-all shadow-md ${
                   simSpeed === 2 ? 'bg-[#e6ff55] border-[#e6ff55] text-black' : 'bg-[#191924] border-white/15 text-white hover:border-[#e6ff55]'
                 }`}
                 title="Alternar Velocidade da Corrida (1x / 2x)"
               >
                 <FastForward className="w-4 h-4" />
-                <span>Velocidade {simSpeed}x</span>
+                <span>{simSpeed}x</span>
               </button>
 
               <div className="text-right">
@@ -4846,31 +5507,35 @@ export default function App() {
               /* PÁGINA 1: COMANDOS DE ESTRATÉGIA, BOX & TELEMETRIA DE PISTA EM TELA CHEIA */
               <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3 overflow-y-auto lg:overflow-hidden">
                 {/* LEFT 6 COLUMNS: GPS DO CIRCUITO & TELEMETRIA DO PILOTO */}
-                <div className="lg:col-span-6 bg-[#14141c] border border-white/10 rounded-2xl p-4 flex flex-col justify-between gap-3 shadow-lg">
+                <div className="lg:col-span-6 bg-[#14141c] border border-white/10 rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between gap-2.5 shadow-lg">
                   <div className="flex items-center justify-between text-xs font-mono text-[#8e8e9c]">
                     <span className="uppercase font-display font-black italic text-sm text-white flex items-center gap-2">
                       <Activity className="w-4 h-4 text-[#e6ff55]" />
                       GPS DO CIRCUITO & TELEMETRIA AO VIVO
                     </span>
-                    <span>Última Volta: <strong className="text-[#e6ff55]">{playerRaceCar.lastLapTime}</strong></span>
+                    <span>Última Volta: <strong className={playerRaceCar.dnf ? 'text-[#ff5f8f]' : 'text-[#e6ff55]'}>{playerRaceCar.lastLapTime}</strong></span>
                   </div>
 
-                  <div className="flex-1 min-h-[140px] bg-[#070709] rounded-2xl p-4 border border-white/5 flex flex-col items-center justify-center gap-3">
+                  <div className="flex-1 min-h-[125px] bg-[#070709] rounded-2xl p-3.5 border border-white/5 flex flex-col items-center justify-center gap-2.5">
                     <TrackMapVector 
                       svgPath={currentTrack.svgPath} 
                       accentColor={currentTeam.color} 
-                      isRacing={isRacing}
-                      playerColor="#e6ff55"
-                      className="w-full h-28 sm:h-36" 
+                      isRacing={isRacing && !playerRaceCar.dnf}
+                      playerColor={playerRaceCar.dnf ? '#ff5f8f' : '#e6ff55'}
+                      className="w-full h-24 sm:h-32" 
                     />
-                    <div className="flex flex-wrap items-center justify-center gap-3 text-xs font-mono text-[#8e8e9c]">
+                    <div className="flex flex-wrap items-center justify-center gap-2.5 text-xs font-mono text-[#8e8e9c]">
                       <span>Posição Atual: <strong className="text-[#e6ff55]">P{playerRaceCar.pos}</strong></span>
                       <span>·</span>
-                      <span>Diferença p/ Líder: <strong className="text-white">{playerRaceCar.gap}</strong></span>
+                      <span>Diferença p/ Líder: <strong className={playerRaceCar.dnf ? 'text-[#ff5f8f]' : 'text-white'}>{playerRaceCar.gap}</strong></span>
                       {playerRaceCar.statusTag && (
                         <>
                           <span>·</span>
-                          <span className="px-2 py-0.5 rounded-full bg-[#191924] text-[#e6ff55] border border-white/10 font-bold">
+                          <span className={`px-2 py-0.5 rounded-full border font-bold ${
+                            playerRaceCar.dnf || playerRaceCar.statusTag.includes('💥') || playerRaceCar.statusTag.includes('🌀') || playerRaceCar.statusTag.includes('⚠️')
+                              ? 'bg-[#ff5f8f]/20 text-[#ff5f8f] border-[#ff5f8f]/40'
+                              : 'bg-[#191924] text-[#e6ff55] border-white/10'
+                          }`}>
                             {playerRaceCar.statusTag}
                           </span>
                         </>
@@ -4878,20 +5543,68 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* LIVE TELEMETRY INCIDENT / EVENT BANNER */}
+                  {raceEventsLog[0] && (
+                    <div className={`px-3 py-2 rounded-xl border text-xs font-mono flex items-center gap-2 shrink-0 ${
+                      raceEventsLog[0].type === 'incident'
+                        ? 'bg-[#ff5f8f]/15 border-[#ff5f8f]/40 text-rose-200'
+                        : raceEventsLog[0].type === 'overtake'
+                        ? 'bg-[#e6ff55]/15 border-[#e6ff55]/40 text-[#e6ff55]'
+                        : 'bg-[#070709] border-white/10 text-slate-300'
+                    }`}>
+                      <span className="font-bold shrink-0 uppercase text-[10px] px-1.5 py-0.5 rounded bg-black/40">
+                        V.{raceEventsLog[0].lap}
+                      </span>
+                      <span className="truncate font-semibold">{raceEventsLog[0].description}</span>
+                    </div>
+                  )}
+
+                  {/* STRATEGIC MODE RISK RADAR (SHOWN WHEN MODO ESTRATÉGICO IS ACTIVE) */}
+                  {raceMode === 'estrategico' && (() => {
+                    const isLightRain = currentTrack.weather === 'Chuva Leve';
+                    const isHeavyRain = currentTrack.weather === 'Chuva Pesada' || currentTrack.weather === 'Chuva';
+                    const isRain = isLightRain || isHeavyRain;
+                    const isDryTire = playerRaceCar.tireCompound === 'Macio' || playerRaceCar.tireCompound === 'Médio' || playerRaceCar.tireCompound === 'Duro';
+                    const isWetTire = playerRaceCar.tireCompound === 'Chuva Leve' || playerRaceCar.tireCompound === 'Chuva Pesada';
+                    const hasWrongTire = (isRain && isDryTire) || (!isRain && isWetTire) || (isLightRain && playerRaceCar.tireCompound === 'Chuva Pesada') || (isHeavyRain && playerRaceCar.tireCompound === 'Chuva Leve');
+                    const isAggressiveInRain = isRain && drivingStyle === 'agressivo';
+
+                    return (
+                      <div className="bg-[#070709] p-2.5 rounded-xl border border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[10px] font-mono shrink-0">
+                        <div className={`p-1.5 rounded-lg border ${hasWrongTire ? 'bg-[#ff5f8f]/15 border-[#ff5f8f]/50 text-[#ff5f8f]' : 'bg-emerald-500/10 border-emerald-400/30 text-emerald-300'}`}>
+                          <div className="uppercase opacity-75">Pneu x Clima</div>
+                          <div className="font-bold truncate">{hasWrongTire ? '⚠️ ERRADO (Derrap./Retardo)' : '✅ Ideal p/ Pista'}</div>
+                        </div>
+                        <div className={`p-1.5 rounded-lg border ${isRain ? 'bg-blue-500/15 border-blue-400/40 text-blue-300' : 'bg-[#14141c] border-white/10 text-slate-300'}`}>
+                          <div className="uppercase opacity-75">Risco Ultrapassagem</div>
+                          <div className="font-bold truncate">{isRain ? '10% Acid. · Menos Ultrap.' : '5% Risco Acidente'}</div>
+                        </div>
+                        <div className={`p-1.5 rounded-lg border ${isAggressiveInRain ? 'bg-amber-500/20 border-amber-400/50 text-amber-300' : 'bg-[#14141c] border-white/10 text-slate-300'}`}>
+                          <div className="uppercase opacity-75">Ritmo na Chuva</div>
+                          <div className="font-bold truncate">{isAggressiveInRain ? `⚠️ Ataque (${playerRaceCar.aggressiveRainLaps || 1}v) Derrap.!` : 'Estável'}</div>
+                        </div>
+                        <div className="p-1.5 rounded-lg border bg-[#14141c] border-white/10 text-slate-300">
+                          <div className="uppercase opacity-75">Motor (Grid)</div>
+                          <div className="font-bold truncate">1% Chance Falha</div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   <div className="grid grid-cols-4 gap-2 text-center font-mono text-xs shrink-0">
-                    <div className="bg-[#070709] p-2.5 rounded-xl border border-white/5">
+                    <div className="bg-[#070709] p-2 rounded-xl border border-white/5">
                       <div className="text-[10px] text-[#8e8e9c] uppercase">Sua Posição</div>
                       <div className="text-base font-display font-black italic text-[#e6ff55] tabular-nums mt-0.5">P{playerRaceCar.pos}</div>
                     </div>
-                    <div className="bg-[#070709] p-2.5 rounded-xl border border-white/5">
+                    <div className="bg-[#070709] p-2 rounded-xl border border-white/5">
                       <div className="text-[10px] text-[#8e8e9c] uppercase">Melhor Volta</div>
                       <div className="text-xs sm:text-sm font-bold text-purple-300 tabular-nums mt-1">{playerRaceCar.bestLapTimeStr || playerRaceCar.lastLapTime}</div>
                     </div>
-                    <div className="bg-[#070709] p-2.5 rounded-xl border border-white/5">
+                    <div className="bg-[#070709] p-2 rounded-xl border border-white/5">
                       <div className="text-[10px] text-[#8e8e9c] uppercase">Ultrapassagens</div>
                       <div className="text-sm font-bold text-[#38bdf8] tabular-nums mt-0.5">{playerRaceCar.overtakesCount || 0}</div>
                     </div>
-                    <div className="bg-[#070709] p-2.5 rounded-xl border border-white/5">
+                    <div className="bg-[#070709] p-2 rounded-xl border border-white/5">
                       <div className="text-[10px] text-[#8e8e9c] uppercase">Paradas Box</div>
                       <div className="text-sm font-bold text-white tabular-nums mt-0.5">{playerRaceCar.pitStops} PIT</div>
                     </div>
@@ -4900,37 +5613,39 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setRaceLeftTab('radio')}
-                    className="w-full min-h-[42px] py-2 bg-[#191924] hover:bg-[#252535] text-[#e6ff55] font-display font-black italic uppercase text-xs rounded-xl border border-[#e6ff55]/30 cursor-pointer flex items-center justify-center gap-2 shrink-0"
+                    className="w-full min-h-[40px] py-2 bg-[#191924] hover:bg-[#252535] text-[#e6ff55] font-display font-black italic uppercase text-xs rounded-xl border border-[#e6ff55]/30 cursor-pointer flex items-center justify-center gap-2 shrink-0"
                   >
                     <Trophy className="w-4 h-4" />
                     <span>Ver Página 2: Classificação Ao Vivo dos 20 Carros →</span>
                   </button>
                 </div>
 
-                {/* RIGHT 6 COLUMNS: CENTRAL DE ESTRATÉGIA, RITMO & CHAMADA DE BOX */}
-                <div className="lg:col-span-6 bg-[#14141c] border border-white/10 rounded-2xl p-4 flex flex-col justify-between gap-3.5 shadow-lg">
-                  <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                    <span className="text-sm font-display font-black italic uppercase text-white flex items-center gap-2">
+                {/* RIGHT 6 COLUMNS: CENTRAL DE ESTRATÉGIA, TROCA DE PNEU AO VIVO, RITMO & CHAMADA DE BOX */}
+                <div className="lg:col-span-6 bg-[#14141c] border border-white/10 rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between gap-2.5 shadow-lg">
+                  <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
+                    <span className="text-xs sm:text-sm font-display font-black italic uppercase text-white flex items-center gap-2">
                       <Wrench className="w-4 h-4 text-[#e6ff55]" />
-                      COMANDOS DE CORRIDA & ESTRATÉGIA DE BOX
+                      ESTRATEGISTA DE PIT WALL & TROCA DE PNEUS
                     </span>
-                    <span className="text-xs font-mono text-[#8e8e9c]">Volta {currentLap} de {currentTrack.laps}</span>
+                    <span className="text-xs font-mono text-[#8e8e9c]">
+                      {raceMode === 'estrategico' ? 'Modo Estratégico (1-2m)' : 'Modo Rápido'} · V.{currentLap}/{currentTrack.laps}
+                    </span>
                   </div>
 
-                  {/* Tire Health Bar */}
-                  <div className="bg-[#070709] p-3.5 rounded-2xl border border-white/5 space-y-2">
+                  {/* Current Tire Health Bar */}
+                  <div className="bg-[#070709] p-3 rounded-2xl border border-white/5 space-y-1.5">
                     <div className="flex items-center justify-between text-xs font-mono">
                       <div className="flex items-center gap-2">
-                        <span className={`px-3 py-0.5 rounded-full border text-xs font-bold ${getTireBadgeStyle(playerRaceCar.tireCompound)}`}>
-                          Pneu {playerRaceCar.tireCompound}
+                        <span className={`px-2.5 py-0.5 rounded-full border text-xs font-bold ${getTireBadgeStyle(playerRaceCar.tireCompound)}`}>
+                          Pneu Atual: {playerRaceCar.tireCompound} ({getTireShortCode(playerRaceCar.tireCompound)})
                         </span>
-                        <span className="text-[#8e8e9c]">Desgaste em Pista</span>
+                        <span className="text-[#8e8e9c] hidden sm:inline">· Troca auto &lt; 25%</span>
                       </div>
-                      <span className={`text-base font-bold ${playerRaceCar.tireHealth <= 32 ? 'text-[#ff5f8f]' : 'text-[#e6ff55]'}`}>
+                      <span className={`text-sm sm:text-base font-bold ${playerRaceCar.tireHealth <= 30 ? 'text-[#ff5f8f]' : 'text-[#e6ff55]'}`}>
                         {playerRaceCar.tireHealth}%
                       </span>
                     </div>
-                    <div className="w-full h-3 bg-[#14141c] rounded-full overflow-hidden border border-white/5">
+                    <div className="w-full h-2.5 bg-[#14141c] rounded-full overflow-hidden border border-white/5">
                       <div 
                         className={`h-full transition-all duration-300 ${
                           playerRaceCar.tireHealth > 55 ? 'bg-[#e6ff55]' : playerRaceCar.tireHealth > 30 ? 'bg-amber-400' : 'bg-[#ff5f8f]'
@@ -4940,12 +5655,55 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* LIVE IN-RACE NEXT PIT STOP TIRE SELECTOR (ALL 5 COMPOUNDS: MACIO, MÉDIO, DURO, CHUVA LEVE, CHUVA PESADA) */}
+                  <div className="bg-[#070709] p-3 rounded-2xl border border-white/10 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-mono">
+                      <span className="text-white font-display font-black italic uppercase text-xs">
+                        SELECIONAR PNEU PARA O PRÓXIMO PIT STOP:
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full border text-[10px] font-bold ${getTireBadgeStyle(nextPitTire)}`}>
+                        Próx. Box: {nextPitTire}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {([
+                        { id: 'Macio' as TireCompound, label: 'Macio', code: 'S', style: 'border-red-500/50 text-red-400' },
+                        { id: 'Médio' as TireCompound, label: 'Médio', code: 'M', style: 'border-[#e6ff55]/50 text-[#e6ff55]' },
+                        { id: 'Duro' as TireCompound, label: 'Duro', code: 'H', style: 'border-slate-300/50 text-white' },
+                        { id: 'Chuva Leve' as TireCompound, label: 'Chuva L.', code: 'CL', style: 'border-emerald-400/50 text-emerald-300' },
+                        { id: 'Chuva Pesada' as TireCompound, label: 'Chuva P.', code: 'CP', style: 'border-blue-400/50 text-blue-300' },
+                      ]).map(t => {
+                        const isSelectedNext = nextPitTire === t.id;
+                        return (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => handleSelectNextPitTire(t.id)}
+                            className={`min-h-[54px] p-1.5 rounded-xl border text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-0.5 ${
+                              isSelectedNext
+                                ? 'bg-[#1e1e2c] border-[#e6ff55] ring-2 ring-[#e6ff55]/40 text-white shadow-md scale-[1.02]'
+                                : 'bg-[#14141c] border-white/10 text-[#8e8e9c] hover:text-white hover:bg-[#191924]'
+                            }`}
+                          >
+                            <span className={`text-[10px] font-mono font-black px-1.5 py-0.2 rounded border ${t.style}`}>
+                              {t.code}
+                            </span>
+                            <span className="text-[10px] font-display font-black italic uppercase leading-tight truncate max-w-full">
+                              {t.label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   {/* Driving Pace Buttons */}
-                  <div className="space-y-2">
-                    <div className="text-xs font-mono uppercase text-[#8e8e9c] font-bold">
+                  <div className="space-y-1.5">
+                    <div className="text-[11px] font-mono uppercase text-[#8e8e9c] font-bold">
                       RITMO DE PILOTAGEM (MOTOR & PNEUS)
                     </div>
-                    <div className="grid grid-cols-3 gap-2.5">
+                    <div className="grid grid-cols-3 gap-2">
                       {([
                         { id: 'conservador', label: 'Poupar' },
                         { id: 'equilibrado', label: 'Normal' },
@@ -4955,7 +5713,7 @@ export default function App() {
                           key={st.id}
                           type="button"
                           onClick={() => setDrivingStyle(st.id)}
-                          className={`min-h-[48px] py-2.5 rounded-xl text-xs sm:text-sm font-display font-black italic uppercase cursor-pointer border transition-all ${
+                          className={`min-h-[42px] py-2 rounded-xl text-xs font-display font-black italic uppercase cursor-pointer border transition-all ${
                             drivingStyle === st.id 
                               ? 'bg-[#e6ff55] text-black border-[#e6ff55] shadow-md shadow-[#e6ff55]/20' 
                               : 'bg-[#191924] border-white/10 text-[#8e8e9c] hover:text-white'
@@ -4968,34 +5726,31 @@ export default function App() {
                   </div>
 
                   {/* Pit Stop Mode & Manual Pit Call */}
-                  <div className="space-y-2.5">
-                    <div className="text-xs font-mono uppercase text-[#8e8e9c] font-bold">
-                      POSTURA DOS MECÂNICOS NO PIT STOP
-                    </div>
-                    <div className="grid grid-cols-2 gap-2.5">
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => setAutoPitMode('conservador')}
-                        className={`min-h-[46px] py-2.5 px-3 rounded-xl text-xs font-mono font-bold cursor-pointer border flex items-center justify-center gap-2 transition-all ${
+                        className={`min-h-[42px] py-2 px-3 rounded-xl text-xs font-mono font-bold cursor-pointer border flex items-center justify-center gap-2 transition-all ${
                           autoPitMode === 'conservador'
                             ? 'bg-[#e6ff55]/20 border-[#e6ff55] text-[#e6ff55]'
                             : 'bg-[#191924] border-white/10 text-[#8e8e9c] hover:text-white'
                         }`}
                       >
-                        <Shield className="w-4 h-4" />
+                        <Shield className="w-3.5 h-3.5" />
                         <span>Box Seguro (3.0s)</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => setAutoPitMode('arriscado')}
-                        className={`min-h-[46px] py-2.5 px-3 rounded-xl text-xs font-mono font-bold cursor-pointer border flex items-center justify-center gap-2 transition-all ${
+                        className={`min-h-[42px] py-2 px-3 rounded-xl text-xs font-mono font-bold cursor-pointer border flex items-center justify-center gap-2 transition-all ${
                           autoPitMode === 'arriscado'
                             ? 'bg-[#ff5f8f]/20 border-[#ff5f8f] text-[#ff5f8f]'
                             : 'bg-[#191924] border-white/10 text-[#8e8e9c] hover:text-white'
                         }`}
                       >
-                        <Flame className="w-4 h-4" />
+                        <Flame className="w-3.5 h-3.5" />
                         <span>Box Rápido (1.8s)</span>
                       </button>
                     </div>
@@ -5003,14 +5758,23 @@ export default function App() {
                     <button
                       type="button"
                       onClick={triggerManualPitNow}
-                      className={`w-full min-h-[52px] py-3 px-4 rounded-2xl text-xs sm:text-sm font-display font-black italic uppercase cursor-pointer border transition-all flex items-center justify-center gap-2 ${
-                        forcePitNextLap
+                      disabled={Boolean(playerRaceCar.dnf)}
+                      className={`w-full min-h-[48px] py-2.5 px-4 rounded-2xl text-xs sm:text-sm font-display font-black italic uppercase cursor-pointer border transition-all flex items-center justify-center gap-2 ${
+                        playerRaceCar.dnf
+                          ? 'bg-[#ff5f8f]/20 border-[#ff5f8f]/50 text-[#ff5f8f] cursor-not-allowed'
+                          : forcePitNextLap
                           ? 'bg-[#ff5f8f] border-white text-black animate-pulse shadow-lg shadow-[#ff5f8f]/30'
                           : 'bg-[#1e1e2d] hover:bg-[#e6ff55] hover:text-black border-[#e6ff55]/50 text-[#e6ff55]'
                       }`}
                     >
                       <Wrench className="w-4 h-4" />
-                      <span>{forcePitNextLap ? 'BOX AGENDADO P/ PRÓXIMA VOLTA (CANCELAR)' : 'CHAMAR BOX AGORA (PRÓX. VOLTA)'}</span>
+                      <span>
+                        {playerRaceCar.dnf
+                          ? `FORA DA PROVA (${playerRaceCar.dnfReason?.toUpperCase() || 'ABANDONO'})`
+                          : forcePitNextLap
+                          ? `BOX AGENDADO P/ PRÓX. VOLTA → ${nextPitTire.toUpperCase()} (CANCELAR)`
+                          : `CHAMAR BOX NA PRÓX. VOLTA (COLOCAR ${nextPitTire.toUpperCase()})`}
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -5062,7 +5826,9 @@ export default function App() {
                   {racePositions.map((car) => {
                     const carTeam = TEAMS.find(t => t.id === car.teamId);
                     const tireColor = car.tireHealth > 55 ? 'bg-[#e6ff55]' : car.tireHealth > 30 ? 'bg-amber-400' : 'bg-[#ff5f8f]';
-                    const posBadgeStyle = car.pos === 1 
+                    const posBadgeStyle = car.dnf
+                      ? 'bg-[#ff5f8f]/25 text-[#ff5f8f] font-bold'
+                      : car.pos === 1 
                       ? 'bg-[#e6ff55] text-black font-black' 
                       : car.pos === 2 
                       ? 'bg-[#38bdf8] text-black font-bold' 
@@ -5076,7 +5842,9 @@ export default function App() {
                       <div 
                         key={car.driverName}
                         className={`px-3 py-1.5 rounded-xl border flex items-center justify-between gap-2 text-xs transition-all min-h-0 ${
-                          isOvertakingCar
+                          car.dnf
+                            ? 'bg-[#1a0f16]/80 border-[#ff5f8f]/40 text-rose-200 opacity-85'
+                            : isOvertakingCar
                             ? 'bg-gradient-to-r from-[#1e1e2c] via-[#2a1a24] to-[#14141c] border-[#e6ff55] text-white font-bold'
                             : car.isPlayer 
                             ? 'bg-[#1e1e2c] border-[#e6ff55] text-white font-bold ring-1 ring-[#e6ff55]/40' 
@@ -5085,7 +5853,7 @@ export default function App() {
                       >
                         <div className="flex items-center gap-2 min-w-0">
                           <span className={`w-7 h-5 rounded-md flex items-center justify-center text-xs shrink-0 tabular-nums ${posBadgeStyle}`}>
-                            P{car.pos}
+                            {car.dnf ? 'OUT' : `P${car.pos}`}
                           </span>
                           <div className="w-2 h-3.5 rounded-full shrink-0" style={{ backgroundColor: carTeam?.color || '#64748b' }}></div>
                           <span className={`truncate font-semibold ${car.isPlayer ? 'text-[#e6ff55]' : 'text-white'}`}>
@@ -5097,7 +5865,11 @@ export default function App() {
                             </span>
                           )}
                           {car.statusTag && (
-                            <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-[#191924] text-[#e6ff55] shrink-0 border border-white/10 font-bold">
+                            <span className={`text-[9px] px-1.5 py-0.2 rounded-full shrink-0 border font-bold ${
+                              car.dnf || car.statusTag.includes('💥') || car.statusTag.includes('🌀') || car.statusTag.includes('⚠️')
+                                ? 'bg-[#ff5f8f]/20 text-[#ff5f8f] border-[#ff5f8f]/40'
+                                : 'bg-[#191924] text-[#e6ff55] border-white/10'
+                            }`}>
                               {car.statusTag}
                             </span>
                           )}
@@ -5110,12 +5882,12 @@ export default function App() {
                             </span>
                           )}
                           <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold border ${getTireBadgeStyle(car.tireCompound)}`}>
-                            {car.tireCompound[0]}
+                            {getTireShortCode(car.tireCompound)}
                           </span>
                           <div className="w-12 h-2 bg-[#14141c] rounded-full overflow-hidden border border-white/5">
                             <div className={`h-full ${tireColor}`} style={{ width: `${car.tireHealth}%` }}></div>
                           </div>
-                          <span className="text-slate-200 font-mono font-bold w-12 text-right text-xs">{car.gap}</span>
+                          <span className={`font-mono font-bold w-16 text-right text-xs ${car.dnf ? 'text-[#ff5f8f]' : 'text-slate-200'}`}>{car.gap}</span>
                         </div>
                       </div>
                     );
@@ -5499,6 +6271,15 @@ export default function App() {
         settings={gameSettings}
         onSave={handleSaveSettings}
         onClose={() => setIsSettingsOpen(false)}
+      />
+
+      {/* NEW DRIVER BRIEF TUTORIAL MODAL (OPENS AUTOMATICALLY WHEN CREATING A NEW DRIVER, SKIPPABLE ANYTIME) */}
+      <NewDriverTutorialModal
+        isOpen={isTutorialOpen}
+        driverName={driver?.name || 'Piloto'}
+        raceMode={raceMode}
+        onSelectRaceMode={(mode) => handleToggleRaceMode(mode)}
+        onClose={() => setIsTutorialOpen(false)}
       />
 
       </div>
